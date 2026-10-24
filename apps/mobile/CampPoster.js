@@ -1,12 +1,9 @@
 import React from "react";
-import { View, Text, Image, StyleSheet, Platform } from "react-native";
+import MediaImage from "./MediaImage";
+import { View, Text, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { displayRange } from "@spark/shared";
 import Svg, { Text as SvgText, Path } from "react-native-svg";
-const imageUri = (p) =>
-  /^(https?:|data:)/.test(p) || Platform.OS === "web"
-    ? p
-    : "https://sparkyouth.vercel.app" + p;
 export default function CampPoster({ activity, logo, compact = false }) {
   const color = /^#[0-9a-f]{6}$/i.test(activity.brandColor || "")
     ? activity.brandColor
@@ -22,8 +19,8 @@ export default function CampPoster({ activity, logo, compact = false }) {
   if (compact)
     return (
       <View style={s.previewCard}>
-        <Image
-          source={{ uri: imageUri(activity.image) }}
+        <MediaImage
+          path={activity.image}
           style={s.previewPhoto}
         />
         <LinearGradient
@@ -34,12 +31,8 @@ export default function CampPoster({ activity, logo, compact = false }) {
           <Text style={s.previewTagText}>{word}</Text>
         </View>
         <View style={s.previewLogoBox}>
-          <Image
-            source={
-              logo
-                ? { uri: logo }
-                : require("../admin/public/media/spark-logo.png")
-            }
+          <MediaImage
+            path={logo || "/media/spark-logo.png"}
             style={s.previewLogo}
           />
         </View>
@@ -67,12 +60,8 @@ export default function CampPoster({ activity, logo, compact = false }) {
         <View style={[s.railLine, { backgroundColor: color }]} />
       </View>
       <View style={s.brandRow}>
-        <Image
-          source={
-            logo
-              ? { uri: logo }
-              : require("../admin/public/media/spark-logo.png")
-          }
+        <MediaImage
+          path={logo || "/media/spark-logo.png"}
           style={s.logo}
         />
         <View>
@@ -91,7 +80,7 @@ export default function CampPoster({ activity, logo, compact = false }) {
           },
         ]}
       >
-        <Image source={{ uri: imageUri(activity.image) }} style={s.photo} />
+        <MediaImage path={activity.image} style={s.photo} />
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,.32)"]}
           style={StyleSheet.absoluteFill}

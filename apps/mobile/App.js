@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
+  AppState,
   SafeAreaView,
   View,
   Text as NativeText,
@@ -8,7 +9,6 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Image,
   Platform,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -22,6 +22,7 @@ import {
   Tajawal_800ExtraBold,
 } from "@expo-google-fonts/tajawal";
 import CampPoster from "./CampPoster";
+import MediaImage from "./MediaImage";
 import Registrations from "./Registrations";
 import {
   normalizeContent,
@@ -113,16 +114,10 @@ const readContent = () => {
   }
   return content;
 };
-const imageUri = (path) =>
-  /^(https?:|data:)/.test(path) || Platform.OS === "web"
-    ? path
-    : "https://sparkyouth.vercel.app" + path;
 function Photo({ path, style }) {
   return (
-    <Image
-      source={{
-        uri: imageUri(path),
-      }}
+    <MediaImage
+      path={path}
       style={[s.photo, style]}
       accessibilityLabel="صورة توضيحية للمخيم"
     />
@@ -157,6 +152,28 @@ export default function App() {
   const journeyRailRef = useRef(null);
   const homeRailRef = useRef(null);
   const [content, setContent] = useState(readContent);
+  useEffect(() => {
+    let active=true, controller;
+    async function refreshContent(){
+      controller?.abort();const requestController=new AbortController();controller=requestController;
+      const timeout=setTimeout(()=>requestController.abort(),8000);
+      try{
+        const origin=Platform.OS==='web'?'':'https://sparkyouth.vercel.app';
+        const response=await fetch(origin+'/api/content',{signal:requestController.signal,cache:'no-store'});
+        if(!response.ok)return;
+        const value=await response.json();
+        if(!['activities','announcements','galleries','journeys'].every(key=>Array.isArray(value[key])))return;
+        if(active)setContent(current=>{
+          const next=normalizeContent(value);
+          // Preview reflections/comments remain local until camper accounts exist.
+          return {...next,comments:(current.comments||[]).filter(comment=>next.journeys.some(j=>j.id===comment.journeyId))};
+        });
+      }catch{}finally{clearTimeout(timeout)}
+    }
+    refreshContent();
+    const listener=AppState.addEventListener('change',state=>{if(state==='active')refreshContent()});
+    return()=>{active=false;controller?.abort();listener.remove()};
+  },[]);
   const [profile, setProfile] = useState(() =>
     load(sessionKey, {
       user: null,
@@ -277,10 +294,8 @@ export default function App() {
     <SafeAreaView style={s.root}>
       <View style={s.header}>
         <View style={s.brandGroup}>
-          <Image
-            source={{
-              uri: content.branding?.logo || imageUri("/media/spark-logo.png"),
-            }}
+          <MediaImage
+            path={content.branding?.logo || "/media/spark-logo.png"}
             style={s.logoImage}
             accessibilityLabel="شعار سبارك"
           />

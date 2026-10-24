@@ -12,6 +12,7 @@ import {
   StyleSheet,
 } from "react-native";
 import CampPoster from "./CampPoster";
+import MediaImage from "./MediaImage";
 import QRCode from "react-native-qrcode-svg";
 import { CampIdentity, CampExtra, pickPreviewImage } from "./CampFields";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -44,10 +45,6 @@ const read = () => {
     return [];
   }
 };
-const uri = (p) =>
-  /^(https?:|data:)/.test(p) || Platform.OS === "web"
-    ? p
-    : "https://sparkyouth.vercel.app" + p;
 function Text({ style, ...props }) {
   return (
     <NativeText
@@ -511,10 +508,8 @@ export default function Registrations({ content, user, onDone }) {
                       compact
                     />
                   ) : (
-                    <Image
-                      source={{
-                        uri: uri(a.image),
-                      }}
+                    <MediaImage
+                      path={a.image}
                       style={s.photo}
                     />
                   )}

@@ -15,7 +15,7 @@ cd android
 
 The output is `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`. Generated native projects and APK files are ignored by default. Prebuild can update workspace package scripts; review those changes before committing.
 
-The preview includes the Arabic app, optional participant fields for testing, and camp tent selection. Native content and registrations are prototype state, not synchronized with the web admin or a backend. Device installation and interaction should be tested separately from a successful build.
+The preview includes the Arabic app, optional participant fields for testing, and camp tent selection. Published public content and images can synchronize through the configured content service; native registrations and profiles remain prototype state without backend synchronization. Device installation and interaction should be tested separately from a successful build.
 
 The existing EAS `preview` profile also produces an APK once an Expo account and project are connected.
 

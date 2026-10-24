@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import {prepareImage, imageData} from "../lib/prepare-image";
 import {
   reviewReceipt,
   validateCampSettings,
@@ -52,11 +53,53 @@ const emptyItem = (key) => ({
     : {}),
   ...(key === "journeys" ? { audience: "campers", prompt: "" } : {}),
 });
-const safeImage = (url) =>
-  url.startsWith("/media/") ||
+const safeImage = (url) => typeof url==='string' && (
+  url.startsWith('/media/') ||
+  /^\/api\/media\/[a-f0-9-]{36}\.(png|jpeg|webp)$/.test(url) ||
   /^data:image\/(png|jpeg|webp);base64,/.test(url) ||
-  /^https:\/\/[^\s]+$/.test(url);
+  /^https:\/\/[^\s]+$/.test(url)
+);
 export default function Dashboard() {
+  const [cloud,setCloud]=useState('checking');
+  const [adminPassword,setAdminPassword]=useState('');
+  const [cloudMessage,setCloudMessage]=useState('');
+  const [busy,setBusy]=useState(false);
+  useEffect(()=>{
+    let active=true;
+    async function connect(){
+      try{
+        const response=await fetch('/api/admin/session',{cache:'no-store'});
+        if(!response.ok)throw new Error();
+        const status=await response.json();
+        if(!active)return;
+        if(!status.storage){setCloud('local');return;}
+        if(!status.configured){setCloud('setup');return;}
+        if(!status.authenticated){setCloud('locked');return;}
+        const result=await fetch('/api/admin/content',{cache:'no-store'});
+        if(!result.ok)throw new Error();
+        const remote=normalizeContent(await result.json());
+        if(active){if(result.headers.get('X-Spark-Content-Initialized')!=='false')setContent(remote);setCloud('remote');}
+      }catch{if(active)setCloud('error')}
+    }
+    connect();return()=>{active=false};
+  },[]);
+  async function signIn(e){
+    e.preventDefault();setBusy(true);setCloudMessage('');
+    try{
+      const response=await fetch('/api/admin/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:adminPassword})});
+      if(!response.ok)throw new Error((await response.json()).error);
+      window.location.reload();
+    }catch(error){setCloudMessage(error.message||'تعذّر تسجيل الدخول.')}finally{setAdminPassword('');setBusy(false)}
+  }
+  async function publish(){
+    setBusy(true);setCloudMessage('');
+    try{
+      const response=await fetch('/api/admin/content',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(content)});
+      if(!response.ok)throw new Error((await response.json()).error);
+      setCloudMessage('تم النشر. افتح التطبيق مجددًا لعرض التغييرات.');
+    }catch(error){setCloudMessage(error.message||'تعذّر النشر.')}finally{setBusy(false)}
+  }
+
   const [registrations, setRegistrations] = useState([]);
   const [tentAssignments, setTentAssignments] = useState({});
   const [content, setContent] = useState(defaultContent),
@@ -103,9 +146,9 @@ export default function Dashboard() {
   }, []);
   const persist = (c) => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(c));
+      if(cloud!=='remote')localStorage.setItem(storageKey, JSON.stringify(c));
       setContent(c);
-      setMessage("تم الحفظ في هذا المتصفح. افتح معاينة التطبيق لرؤية التعديل.");
+      setMessage(cloud==='remote'?'تم حفظ المسودة. انشر التغييرات لتظهر في التطبيق.':"تم الحفظ في هذا المتصفح. افتح معاينة التطبيق لرؤية التعديل.");
       return true;
     } catch {
       setMessage("تعذّر الحفظ. تحقق من مساحة التخزين وإعدادات المتصفح.");
@@ -157,7 +200,7 @@ export default function Dashboard() {
     if (!draft.title.trim() || !draft.text.trim()) return;
     const images = section === "galleries" ? draft.images : [draft.image];
     if (images.some((url) => !safeImage(url))) {
-      setMessage("استخدم رابط صورة HTTPS أو مسارًا يبدأ بـ /media/.");
+      setMessage("ارفع صورة من جهازك أو أدخل رابط صورة HTTPS صحيحًا.");
       return;
     }
     if (section === "galleries" && !images.length) {
@@ -244,20 +287,23 @@ export default function Dashboard() {
       setMessage("تعذّر حفظ مراجعة الوصل.");
     }
   };
-  const uploadActivityImage = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (
-      !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-      file.size > 500000
-    ) {
-      setMessage("اختر صورة PNG/JPEG/WebP أقل من 500 كيلوبايت للمعاينة.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => change("image", reader.result);
-    reader.onerror = () => setMessage("تعذّر قراءة الصورة.");
-    reader.readAsDataURL(file);
+  const uploadActivityImage = async (e) => {
+    const files=Array.from(e.target.files || []);e.target.value='';
+    if(!files.length)return;
+    setBusy(true);setMessage('جارٍ تجهيز الصور…');
+    try{
+      const images=[];
+      for(const file of files){
+        const blob=await prepareImage(file);
+        if(cloud==='remote'){
+          const response=await fetch('/api/media',{method:'POST',headers:{'Content-Type':blob.type},body:blob});
+          const result=await response.json();if(!response.ok)throw new Error(result.error);
+          images.push(result.image);
+        }else images.push(await imageData(blob));
+      }
+      if(section==='galleries')change('images',[...draft.images,...images]);else change('image',images[0]);
+      setMessage('تم تجهيز الصور. احفظ المحتوى'+(cloud==='remote'?' ثم انشر التغييرات للتطبيق.':'. الصور محفوظة في معاينة هذا المتصفح فقط حتى ربط التخزين.'));
+    }catch(error){setMessage(error.message)}finally{setBusy(false)}
   };
   const uploadLogo = (e) => {
     const file = e.target.files?.[0];
@@ -278,6 +324,14 @@ export default function Dashboard() {
     reader.onerror = () => setMessage("تعذّر قراءة ملف الشعار.");
     reader.readAsDataURL(file);
   };
+  if(cloud==='checking'||cloud==='locked'||cloud==='setup'||cloud==='error')return <main dir="rtl" style={{maxWidth:440,margin:'80px auto',padding:24}}>
+    <h1>إدارة سبارك</h1>
+    {cloud==='checking'?<p>جارٍ فتح الإدارة…</p>:cloud==='locked'?<form onSubmit={signIn}>
+      <label>كلمة مرور الإدارة<input type="password" autoComplete="current-password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)} required /></label>
+      <button type="submit" disabled={busy}>تسجيل الدخول للإدارة</button>
+    </form>:<p>{cloud==='setup'?'أضف ADMIN_PASSWORD من 16 حرفًا على الأقل إلى متغيرات Vercel ثم أعد النشر.':'تعذّر الاتصال بالإدارة. أعد فتح الصفحة.'}</p>}
+    {cloudMessage&&<p role="status">{cloudMessage}</p>}
+  </main>;
   return (
     <div className="shell">
       <aside>
@@ -322,9 +376,12 @@ export default function Dashboard() {
           </a>
         </header>
         <div className="localNotice">
-          نسخة للمراجعة: التعديلات تُحفظ في هذا المتصفح وتظهر في معاينة التطبيق
-          على نفس الموقع. لا يوجد تسجيل دخول أو اعتماد مرشدين فعلي، ولا مزامنة
-          بين الأجهزة بعد.
+          {cloud==='remote'?'التخزين متصل. احفظ المحتوى ثم انشر التغييرات لتظهر في التطبيق.':'نسخة للمراجعة: التعديلات والصور تُحفظ في هذا المتصفح فقط. اربط Supabase بالمشروع لتفعيل النشر إلى التطبيق.'}
+          {cloud==='remote'&&<div className="actions">
+            <button type="button" disabled={busy||!!draft} onClick={publish}>نشر التغييرات للتطبيق</button>
+            <button type="button" onClick={async()=>{await fetch('/api/admin/session',{method:'DELETE'});window.location.reload()}}>خروج الإدارة</button>
+          </div>}
+          {cloudMessage&&<p role="status">{cloudMessage}</p>}
         </div>
         <section className="intro">
           <p className="eyebrow">مخيم يجمعنا، وتجارب تنمّينا</p>
@@ -674,11 +731,25 @@ export default function Dashboard() {
                     onChange={(e) => change("text", e.target.value)}
                   />
                 </label>
+                {['activities','announcements','galleries','journeys'].includes(section) && <>
+                  <label>
+                    {section==='galleries'?'رفع صور الألبوم':section==='activities'?'رفع صورة النشاط':section==='announcements'?'رفع صورة الإعلان':'رفع صورة المسار'}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" multiple={section==='galleries'} onChange={uploadActivityImage} disabled={busy} />
+                    <small>اختر صورًا من جهازك حتى 10 ميغابايت للصورة؛ تُجهّز تلقائيًا للعرض.</small>
+                  </label>
+                  <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+                    {(section==='galleries'?draft.images:[draft.image]).filter(Boolean).map((image,index)=><div key={index}>
+                      <img src={image} alt={'معاينة الصورة '+(index+1)} style={{width:120,height:90,objectFit:'cover',borderRadius:12}} />
+                      {section==='galleries'&&<button type="button" onClick={()=>change('images',draft.images.filter((_,i)=>i!==index))}>حذف الصورة {index+1}</button>}
+                    </div>)}
+                  </div>
+                </>}
+                <details>
+                  <summary>استخدام رابط صورة بدل الرفع</summary>
                 {section === "galleries" ? (
                   <label>
                     روابط الصور · رابط واحد في كل سطر
                     <textarea
-                      required
                       rows={4}
                       value={draft.images.join("\n")}
                       onChange={(e) =>
@@ -694,7 +765,6 @@ export default function Dashboard() {
                   <label>
                     رابط الصورة
                     <input
-                      required
                       value={draft.image}
                       onChange={(e) => change("image", e.target.value)}
                     />
@@ -704,6 +774,7 @@ export default function Dashboard() {
                     </small>
                   </label>
                 )}
+                </details>
                 {section === "activities" && (
                   <>
                     <label className="checkbox">
@@ -713,14 +784,6 @@ export default function Dashboard() {
                         onChange={(e) => change("inactive", e.target.checked)}
                       />{" "}
                       غير فعّال: عرض التفاصيل دون إجراءات تسجيل
-                    </label>
-                    <label>
-                      رفع صورة النشاط
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={uploadActivityImage}
-                      />
                     </label>
                     <label>
                       نوع النشاط
@@ -1108,7 +1171,7 @@ export default function Dashboard() {
                   منشور ويظهر في التطبيق
                 </label>
                 <div className="actions">
-                  <button className="primary" type="submit">
+                  <button className="primary" type="submit" disabled={busy}>
                     حفظ المحتوى
                   </button>
                   <button
