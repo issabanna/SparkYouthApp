@@ -299,10 +299,6 @@ export default function App() {
             style={s.logoImage}
             accessibilityLabel="شعار سبارك"
           />
-          <View>
-            <Text style={s.wordmark}>SPARK</Text>
-            <Text style={s.tagline}>سبارك · نكبر معًا في المغامرة</Text>
-          </View>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -1046,12 +1042,6 @@ const s = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 13,
   },
-  wordmark: {
-    fontSize: 23,
-    fontWeight: "800",
-    textAlign: "right",
-    letterSpacing: 0.7,
-  },
   notificationButton: {
     width: 39,
     height: 39,
@@ -1492,8 +1482,8 @@ const s = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 22,
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingTop: 6,
+    paddingBottom: 6,
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "center",
@@ -1506,12 +1496,6 @@ const s = StyleSheet.create({
     fontWeight: "900",
     textAlign: "right",
     color: "#101713",
-  },
-  tagline: {
-    fontSize: 10,
-    color: "#716E65",
-    textAlign: "right",
-    marginTop: 2,
   },
   pill: {
     backgroundColor: "#fff6bf",
