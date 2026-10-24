@@ -20,6 +20,7 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
     }, { key: storageKey, value: {
       ...defaultContent,
       schemaVersion: 4,
+      registrationTestMode: false,
       activities: defaultContent.activities.map(a => a.id === "camp-demo"
         ? { ...a, tentsEnabled: false } : a),
     } });

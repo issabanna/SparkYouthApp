@@ -342,6 +342,11 @@ export default function Dashboard() {
         )}
         {section === "overview" ? (
           <>
+            <label className="checkbox">
+              <input type="checkbox" checked={content.registrationTestMode === true}
+                onChange={e => persist({ ...content, registrationTestMode: e.target.checked })} />
+              وضع تجربة التسجيل — جعل بيانات المشاركين اختيارية
+            </label>
             <div className="cards">
               {[
                 [

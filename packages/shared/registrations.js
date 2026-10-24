@@ -191,6 +191,13 @@ const duplicateParticipant = (records, activityId, user, details) =>
   });
 function validateDetails(d, a, stage = "all") {
   const errors = {};
+  if (a.registrationTestMode === true) {
+    if (stage !== "extra" &&
+        (a.tentsEnabled || a.registrationMode === "waitingList") &&
+        !["male", "female", "other"].includes(d.gender))
+      errors.gender = "اختر الجنس لعرض الخيام المناسبة.";
+    return errors;
+  }
   if (
     a.kind !== "camp" &&
     (!d.firstName?.trim() || d.firstName.trim().length > 50)
@@ -294,6 +301,13 @@ function validateDetails(d, a, stage = "all") {
 function submitRegistration(activity, user, details, records, consent) {
   const a = normalizeActivity(activity);
   details = { ...details, registrationRole: "camper" };
+  if (a.registrationTestMode === true &&
+      !(a.kind === "camp" ? details.arabicFullName?.trim() :
+        (details.firstName?.trim() && details.lastName?.trim()))) {
+    const count = records.filter(r => r.activityId === a.id && r.ownerKey === ownerKey(user)).length + 1;
+    details = { ...details, arabicFullName: `مشارك تجريبي ${count}`,
+      firstName: "مشارك", lastName: `تجريبي ${count}` };
+  }
   if (a.kind === "camp") {
     const names = (details.arabicFullName || "").trim().split(/\s+/);
     details = {
@@ -342,6 +356,7 @@ function submitRegistration(activity, user, details, records, consent) {
       ownerKey: ownerKey(user),
       submittedBy: user.name,
       campFormVersion: a.kind === "camp" ? 2 : null,
+      testRegistration: a.registrationTestMode === true,
       feeAmount: Number(a.fees || 0),
       currency: a.currency,
       receiptStatus: "notSubmitted",

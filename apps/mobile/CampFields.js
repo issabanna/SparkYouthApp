@@ -58,7 +58,7 @@ export function CampIdentity({ activity, details, update, errors, field }) {
     <>
       {field(
         "nationalId",
-        `الرقم الوطني${activity.requireNationalId ? " (مطلوب)" : " (اختياري)"}`,
+        `الرقم الوطني${activity.requireNationalId && !activity.registrationTestMode ? " (مطلوب)" : " (اختياري)"}`,
         { maxLength: 30, autoCapitalize: "characters" },
       )}
       {field("arabicFullName", "الاسم الثلاثي باللغة العربية", {
@@ -144,7 +144,7 @@ export function CampExtra({
         </>
       )}
       <Text style={s.heading}>
-        صورة الهوية {activity.requireIdDocument ? "(مطلوبة)" : "(اختيارية)"}
+        صورة الهوية {activity.requireIdDocument && !activity.registrationTestMode ? "(مطلوبة)" : "(اختيارية)"}
       </Text>
       <Text style={s.note}>
         معاينة محلية فقط. استخدم صورة تجريبية، ولا ترفع وثيقة هوية حقيقية الآن.

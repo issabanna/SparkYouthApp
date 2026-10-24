@@ -133,7 +133,9 @@ export default function Registrations({ content, user, onDone }) {
       window.removeEventListener("storage", refresh);
     };
   }, []);
-  const activities = content.activities.map(normalizeActivity),
+  const activities = content.activities.map(a => normalizeActivity({
+    ...a, registrationTestMode: content.registrationTestMode === true,
+  })),
     activity = activities.find((a) => a.id === activityId);
   const isCamp = activity?.kind === "camp",
     servicesStep = isCamp ? 2 : 1,
@@ -676,6 +678,11 @@ export default function Registrations({ content, user, onDone }) {
                       </Text>
                     )}
                   </>
+                )}
+                {activity.registrationTestMode && step < successStep && (
+                  <Text style={s.info}>
+                    وضع تجربة التسجيل: البيانات اختيارية. اختر الجنس والخيمة فقط عند تفعيل الخيام.
+                  </Text>
                 )}
                 <View style={s.progress}>
                   {Array.from(

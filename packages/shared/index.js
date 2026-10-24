@@ -8,6 +8,7 @@ exports.ar = {
 };
 exports.storageKey = "spark-camp-content-v1";
 exports.defaultContent = {
+  registrationTestMode: true,
   announcements: [
     {
       id: "a1",
