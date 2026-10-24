@@ -81,3 +81,7 @@ See [the field-by-field comparison](docs/registration-comparison.md) for the fie
 Six editable Spark camp templates use school-grade groups and birth-year restrictions from the reference branding. They start inactive with no dates; the past 2026 poster dates are not reused as upcoming events. Content version 3 preserves existing edits and adds templates once. Real Facebook photos still have not been imported; original image files remain needed.
 
 Run `npm run test:family` for the complete multi-camper/receipt browser workflow (set CHROMIUM_PATH and SPARK_TEST_URL), and `npm run test:branding` for eligibility/template migration checks. Native photo selection uses Expo Image Picker; camera and microphone permissions are disabled because the flow only selects existing images. Native distribution still needs signing/accounts and device QA.
+
+## Camp poster redesign and familiar names
+
+Camp cards now use taller framed color bands, larger circular photos, oversized outlined category names and a compact information footer. Home uses a compact version of the same poster. Familiar categories replace invented seed names: «مخيم الأطفال», «مخيم الشبيبة» and «المخيم الرياضي», with school grades displayed separately. Content version 4 renames only exact old seed titles and announcement wording; custom admin names, capacity, images, registrations and prior deletions remain intact. Existing saved registration lists display the current camp title while keeping original record snapshots.

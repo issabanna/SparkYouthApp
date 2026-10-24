@@ -63,3 +63,28 @@ assert(validateCampSettings({ ...kids, allowedGrades: ["صف غير موجود"]
 console.log(
   "PASS: school grades are not ages, birth-year eligibility, inactive reference templates, editable branding and preserving legacy content on migration.",
 );
+
+const renamed = normalizeContent({
+  schemaVersion: 3,
+  activities: [
+    {
+      id: "camp-demo",
+      title: "مخيم سبارك · تحت النجوم",
+      kind: "camp",
+      capacity: 51,
+      image: "/media/custom.jpg",
+    },
+    { id: "spark-kids", title: "اسم خاص بالإدارة", kind: "camp" },
+  ],
+  announcements: [{ id: "a1", title: "موعدنا تحت النجوم" }],
+});
+assert.equal(renamed.activities[0].title, "مخيم الشبيبة");
+assert.equal(renamed.activities[0].capacity, 51);
+assert.equal(renamed.activities[0].image, "/media/custom.jpg");
+assert.equal(renamed.activities[1].title, "اسم خاص بالإدارة");
+assert.equal(renamed.announcements[0].title, "أخبار المخيم والتسجيل");
+assert.equal(
+  renamed.activities.length,
+  2,
+  "Version 3 deletions remain deleted during rename migration",
+);

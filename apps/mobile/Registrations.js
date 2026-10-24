@@ -372,7 +372,10 @@ export default function Registrations({ content, user, onDone }) {
                   />
                   <Text>{statuses[r.status]}</Text>
                 </View>
-                <Text style={s.title}>{r.activityTitle}</Text>
+                <Text style={s.title}>
+                  {activities.find((a) => a.id === r.activityId)?.title ||
+                    r.activityTitle}
+                </Text>
                 <Text style={s.participantName}>
                   {r.details.firstName} {r.details.lastName}
                 </Text>
@@ -462,13 +465,19 @@ export default function Registrations({ content, user, onDone }) {
               const registration = activeRegistration(records, a.id, user),
                 slots = available(a, records);
               return (
-                <View key={a.id} style={s.card}>
-                  {a.kind === "camp" && a.brandTitle ? (
+                <View
+                  key={a.id}
+                  testID={`activity-card-${a.id}`}
+                  style={[s.card, a.kind === "camp" && s.campCard]}
+                >
+                  {a.kind === "camp" ? (
                     <CampPoster activity={a} logo={content.branding?.logo} />
                   ) : (
                     <Image source={{ uri: uri(a.image) }} style={s.photo} />
                   )}
-                  <View style={s.cardBody}>
+                  <View
+                    style={[s.cardBody, a.kind === "camp" && s.campCardBody]}
+                  >
                     <View style={s.cardTop}>
                       <Text style={s.kind}>{kinds[a.kind]}</Text>
                       <Text style={s.slot}>
@@ -483,8 +492,18 @@ export default function Registrations({ content, user, onDone }) {
                                 : "مكتمل العدد"}
                       </Text>
                     </View>
-                    <Text style={s.title}>{a.title}</Text>
-                    <Text style={s.body}>{a.text}</Text>
+                    {a.kind !== "camp" && (
+                      <Text style={s.title}>{a.title}</Text>
+                    )}
+                    {(a.kind !== "camp" ||
+                      (!a.inactive && a.registrationOpen)) && (
+                      <Text
+                        style={s.body}
+                        numberOfLines={a.kind === "camp" ? 2 : undefined}
+                      >
+                        {a.text}
+                      </Text>
+                    )}
                     <Text style={s.body}>
                       {a.date || "الموعد غير محدد"} · {a.location}
                     </Text>
@@ -500,16 +519,28 @@ export default function Registrations({ content, user, onDone }) {
                         {a.endDate ? ` · النهاية: ${a.endDate}` : ""}
                       </Text>
                     )}
-                    {a.gradeLabel && (
+                    {a.kind !== "camp" && a.gradeLabel && (
                       <Text style={s.meta}>{displayRange(a.gradeLabel)}</Text>
                     )}
-                    {a.useAgeLimits && (
+                    {a.kind !== "camp" && a.useAgeLimits && (
                       <Text style={s.meta}>
                         العمر: {a.minAge}–{a.maxAge} سنة
                       </Text>
                     )}
-                    {a.inactive ? (
-                      <Action disabled>غير فعّال</Action>
+                    {a.inactive || !a.registrationOpen ? (
+                      <Pressable
+                        disabled
+                        accessibilityRole="button"
+                        accessibilityLabel="غير فعّال"
+                        style={s.inactiveCamp}
+                      >
+                        <Ionicons
+                          name="lock-closed-outline"
+                          size={13}
+                          color="#555"
+                        />
+                        <Text style={s.inactiveLabel}>غير فعّال</Text>
+                      </Pressable>
                     ) : (
                       <Action
                         disabled={
@@ -577,6 +608,9 @@ export default function Registrations({ content, user, onDone }) {
                   </Text>
                 </View>
                 <Text style={s.heading}>{activity.title}</Text>
+                {step === 0 && activity.kind === "camp" && (
+                  <Text style={s.body}>{activity.text}</Text>
+                )}
                 {!!activity.instructions && (
                   <Text style={s.info}>{activity.instructions}</Text>
                 )}
@@ -1117,7 +1151,10 @@ export default function Registrations({ content, user, onDone }) {
                     {r.details.arabicFullName ||
                       `${r.details.firstName} ${r.details.lastName}`}
                   </Text>
-                  <Text style={s.body}>{r.activityTitle}</Text>
+                  <Text style={s.body}>
+                    {activities.find((a) => a.id === r.activityId)?.title ||
+                      r.activityTitle}
+                  </Text>
                   <View style={s.qr}>
                     <QRCode
                       value={JSON.stringify({
@@ -1185,6 +1222,19 @@ export default function Registrations({ content, user, onDone }) {
   );
 }
 const s = StyleSheet.create({
+  campCard: { borderRadius: 20, borderColor: "#e7e7e2" },
+  campCardBody: { padding: 16 },
+  inactiveCamp: {
+    flexDirection: "row-reverse",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 7,
+    padding: 10,
+    borderRadius: 9,
+    backgroundColor: "#f1f1ed",
+    marginTop: 8,
+  },
+  inactiveLabel: { fontFamily: "TajawalBold", fontSize: 12, color: "#555" },
   groupHeading: {
     fontFamily: "TajawalBold",
     fontSize: 18,

@@ -31,7 +31,7 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3015";
       .locator("article")
       .filter({
         has: admin.getByRole("heading", {
-          name: "مخيم سبارك · تحت النجوم",
+          name: "مخيم الشبيبة",
           exact: true,
         }),
       })

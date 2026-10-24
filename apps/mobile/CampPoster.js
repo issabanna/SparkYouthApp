@@ -1,18 +1,36 @@
 import React from "react";
 import { View, Text, Image, StyleSheet, Platform } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { displayRange } from "@spark/shared";
-import Svg, { Text as SvgText } from "react-native-svg";
-const uri = (p) =>
+import Svg, { Text as SvgText, Path } from "react-native-svg";
+const imageUri = (p) =>
   /^(https?:|data:)/.test(p) || Platform.OS === "web"
     ? p
     : "https://sparkyouth.vercel.app" + p;
-export default function CampPoster({ activity, logo }) {
+export default function CampPoster({ activity, logo, compact = false }) {
   const color = /^#[0-9a-f]{6}$/i.test(activity.brandColor || "")
     ? activity.brandColor
-    : "#4d45a4";
+    : "#5149ae";
+  const word = (activity.brandTitle || "CAMP").toUpperCase();
+  const grade = activity.gradeLabel?.match(/\d+(?:[–-]\d+)?\+?/)?.[0];
+  const range = grade
+    ? grade + (activity.gradeLabel.includes("وما بعده") ? "+" : "")
+    : activity.useAgeLimits
+      ? `${activity.minAge}–${activity.maxAge}`
+      : "";
+  const circle = compact ? 190 : 272;
   return (
-    <View style={[s.poster, { backgroundColor: color }]}>
-      <View style={s.top}>
+    <View style={[s.poster, { height: compact ? 330 : 442 }]}>
+      <LinearGradient
+        colors={[color, color, "#121519"]}
+        locations={[0, 0.72, 1]}
+        style={s.colorBand}
+      />
+      <View style={s.leftRail}>
+        <Text style={s.railText}>SPARK · CAMP EXPERIENCE</Text>
+        <View style={[s.railLine, { backgroundColor: color }]} />
+      </View>
+      <View style={s.brandRow}>
         <Image
           source={
             logo
@@ -21,97 +39,197 @@ export default function CampPoster({ activity, logo }) {
           }
           style={s.logo}
         />
-        <Text style={s.brand}>SPARK CAMP</Text>
-        <Text style={s.edition}>مجتمع يتعلّم، يلعب وينمو</Text>
+        <View>
+          <Text style={s.brandName}>SPARK</Text>
+          <Text style={s.brandCaption}>CAMP EXPERIENCE</Text>
+        </View>
       </View>
-      <View style={s.circle}>
-        <Image source={{ uri: uri(activity.image) }} style={s.photo} />
+      <View
+        style={[
+          s.circle,
+          {
+            width: circle,
+            height: circle,
+            borderRadius: circle / 2,
+            top: compact ? 77 : 83,
+          },
+        ]}
+      >
+        <Image source={{ uri: imageUri(activity.image) }} style={s.photo} />
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,.32)"]}
+          style={StyleSheet.absoluteFill}
+        />
       </View>
-      <View style={s.outline}>
-        <Svg width="100%" height="64" viewBox="0 0 360 64">
+      <View style={[s.outline, { top: compact ? 123 : 158 }]}>
+        <Svg width="100%" height={100} viewBox="0 0 360 100">
           <SvgText
             x="180"
-            y="51"
+            y="82"
             textAnchor="middle"
-            fontSize="53"
+            fontSize={Math.min(87, 610 / word.length)}
             fontWeight="900"
             fontFamily="Arial"
-            fill="none"
+            letterSpacing="-3"
+            fill="rgba(255,255,255,.04)"
             stroke="#fff"
             strokeWidth="1.4"
           >
-            {activity.brandTitle || "CAMP"}
+            {word}
           </SvgText>
         </Svg>
       </View>
-      <View style={s.footer}>
-        <Text style={s.name}>{activity.title}</Text>
-        <Text style={s.grade}>
-          {displayRange(activity.gradeLabel) || "مخيم سبارك"}
+      <View style={[s.corner, { borderColor: color }]}>
+        <Svg width={22} height={22} viewBox="0 0 24 24">
+          <Path
+            d="M4 20L12 5l8 15H4zm4 0l4-8 4 8"
+            stroke={color}
+            strokeWidth="1.5"
+            fill="none"
+          />
+        </Svg>
+      </View>
+      <View style={[s.footer, { bottom: compact ? 12 : 17 }]}>
+        <Text style={[s.campName, compact && { fontSize: 21 }]}>
+          {activity.title.split(" · ")[0]}
         </Text>
+        <View style={s.yellowRule} />
+        {range ? (
+          <View style={s.eligibility}>
+            <Text style={s.rangeLabel}>
+              {grade ? "للطلاب في الصفوف" : "للأعمار"}
+            </Text>
+            <Text style={[s.range, compact && { fontSize: 29 }]}>
+              {displayRange(range)}
+            </Text>
+          </View>
+        ) : (
+          <Text style={s.motto}>نلعب. نكتشف. ننمو.</Text>
+        )}
         {activity.birthYearLabel ? (
-          <Text style={s.years}>{displayRange(activity.birthYearLabel)}</Text>
-        ) : null}
+          <Text style={s.birth}>{displayRange(activity.birthYearLabel)}</Text>
+        ) : (
+          <Text style={s.motto}>مغامرة تجمعنا، وذكريات تبقى</Text>
+        )}
       </View>
     </View>
   );
 }
 const s = StyleSheet.create({
-  poster: { height: 330, overflow: "hidden", alignItems: "center" },
-  top: { alignItems: "center", paddingTop: 15, zIndex: 2 },
-  logo: { width: 27, height: 27, resizeMode: "contain" },
-  brand: {
-    fontFamily: "TajawalBold",
-    fontSize: 14,
-    color: "#fff",
-    letterSpacing: 1,
-    marginTop: 2,
+  poster: {
+    overflow: "hidden",
+    backgroundColor: "#f5f5f2",
+    alignItems: "center",
   },
-  edition: {
-    fontFamily: "Tajawal",
-    fontSize: 10,
+  colorBand: { position: "absolute", top: 0, bottom: 0, left: 22, right: 22 },
+  leftRail: {
+    position: "absolute",
+    left: 2,
+    top: 28,
+    bottom: 26,
+    width: 17,
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  railText: {
+    fontFamily: "TajawalBold",
+    fontSize: 8,
+    letterSpacing: 2,
+    color: "#777",
+    width: 220,
+    transform: [{ rotate: "-90deg" }],
+    position: "absolute",
+    top: 157,
+    left: -102,
+  },
+  railLine: { width: 2, height: 28, marginTop: "auto" },
+  brandRow: {
+    position: "absolute",
+    top: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    zIndex: 3,
+  },
+  logo: { width: 39, height: 39, resizeMode: "contain" },
+  brandName: {
+    fontFamily: "TajawalBold",
+    fontSize: 22,
+    letterSpacing: 1,
+    color: "#fff",
+    lineHeight: 25,
+  },
+  brandCaption: {
+    fontFamily: "TajawalBold",
+    fontSize: 7,
     color: "#ffffffb0",
-    marginTop: 3,
+    letterSpacing: 1.2,
   },
   circle: {
     position: "absolute",
-    top: 85,
-    width: 190,
-    height: 190,
-    borderRadius: 95,
     overflow: "hidden",
-    borderWidth: 4,
-    borderColor: "#ffffff30",
+    borderWidth: 3,
+    borderColor: "#ffffff40",
   },
   photo: { width: "100%", height: "100%" },
-  outline: { position: "absolute", top: 144, left: 0, right: 0, zIndex: 3 },
+  outline: { position: "absolute", left: 0, right: 0, zIndex: 4 },
+  corner: {
+    position: "absolute",
+    right: 0,
+    bottom: 35,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingVertical: 8,
+    backgroundColor: "#f5f5f2",
+  },
   footer: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 15,
+    left: 31,
+    right: 31,
     alignItems: "center",
+    zIndex: 5,
   },
-  name: {
+  campName: {
     fontFamily: "TajawalBold",
-    fontSize: 21,
+    fontSize: 26,
     color: "#ffda00",
     textAlign: "center",
   },
-  grade: {
-    fontFamily: "TajawalBold",
-    fontSize: 18,
-    color: "#fff",
-    marginTop: 5,
+  yellowRule: {
+    width: 40,
+    height: 2,
+    backgroundColor: "#ffda00",
+    marginTop: 6,
+    marginBottom: 8,
   },
-  years: {
+  eligibility: { alignItems: "center" },
+  rangeLabel: {
+    fontFamily: "Tajawal",
+    fontSize: 10,
+    color: "#fff",
+    marginBottom: 0,
+  },
+  range: {
+    fontFamily: "TajawalBold",
+    fontSize: 39,
+    color: "#fff",
+    lineHeight: 44,
+    writingDirection: "ltr",
+  },
+  birth: {
     fontFamily: "TajawalBold",
     fontSize: 10,
-    color: "#141414",
+    color: "#171717",
     backgroundColor: "#ffda00",
-    paddingHorizontal: 11,
+    paddingHorizontal: 12,
     paddingVertical: 3,
-    borderRadius: 5,
     marginTop: 5,
+  },
+  motto: {
+    fontFamily: "Tajawal",
+    fontSize: 9,
+    color: "#ffffffa0",
+    marginTop: 4,
+    textAlign: "center",
   },
 });

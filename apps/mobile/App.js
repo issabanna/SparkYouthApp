@@ -21,6 +21,7 @@ import {
   Tajawal_700Bold,
   Tajawal_800ExtraBold,
 } from "@expo-google-fonts/tajawal";
+import CampPoster from "./CampPoster";
 import Registrations from "./Registrations";
 import {
   normalizeContent,
@@ -395,13 +396,23 @@ export default function App() {
                   .filter((a) => a.published)
                   .map((a) => (
                     <View key={a.id} style={s.activityCard}>
-                      <Photo path={a.image} style={s.activityPhoto} />
+                      {a.kind === "camp" ? (
+                        <CampPoster
+                          activity={a}
+                          logo={content.branding?.logo}
+                          compact
+                        />
+                      ) : (
+                        <Photo path={a.image} style={s.activityPhoto} />
+                      )}
                       <View style={s.activityBody}>
                         <View style={s.activityTag}>
                           <Icon name="trail-sign-outline" size={15} />
                           <Text style={s.activityTagText}>من قلب المخيم</Text>
                         </View>
-                        <Text style={s.title}>{a.title}</Text>
+                        {a.kind !== "camp" && (
+                          <Text style={s.title}>{a.title}</Text>
+                        )}
                         <View style={s.locationRow}>
                           <Icon
                             name="location-outline"

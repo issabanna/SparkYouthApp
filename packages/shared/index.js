@@ -11,7 +11,7 @@ exports.defaultContent = {
   announcements: [
     {
       id: "a1",
-      title: "موعدنا تحت النجوم",
+      title: "أخبار المخيم والتسجيل",
       text: "مغامرة جديدة، أصدقاء جدد، وذكريات تبقى معنا. تابع أخبار المخيم هنا.",
       image: "/media/camp.png",
       published: true,
@@ -95,7 +95,7 @@ exports.sampleProgress = [
 ];
 
 Object.assign(exports, require("./registrations"));
-exports.contentVersion = 3;
+exports.contentVersion = 4;
 exports.defaultContent.schemaVersion = exports.contentVersion;
 Object.assign(exports.defaultContent.activities[0], {
   kind: "event",
@@ -109,7 +109,7 @@ Object.assign(exports.defaultContent.activities[0], {
 exports.defaultContent.activities.push(
   {
     id: "camp-demo",
-    title: "مخيم سبارك · تحت النجوم",
+    title: "مخيم الشبيبة",
     text: "أيام من التخييم والمغامرة والتعاون، مع مساحة للنمو وتكوين صداقات جديدة.",
     date: "",
     location: "موقع المخيم يُعلن قريبًا",
@@ -143,7 +143,7 @@ exports.defaultContent.activities.push(
 exports.campTemplates = [
   {
     id: "spark-kids",
-    title: "سبارك الصغار",
+    title: "مخيم الأطفال · الصفوف 3–5",
     brandTitle: "KIDS",
     brandColor: "#5149ae",
     gradeLabel: "الصفوف 3–5",
@@ -151,15 +151,15 @@ exports.campTemplates = [
   },
   {
     id: "spark-explorers",
-    title: "سبارك المستكشفين",
-    brandTitle: "EXPLORE",
+    title: "مخيم الأطفال · الصفان 6–7",
+    brandTitle: "KIDS",
     brandColor: "#6560b9",
     gradeLabel: "الصفان 6–7",
     allowedGrades: ["السادس", "السابع"],
   },
   {
     id: "spark-youth",
-    title: "سبارك الشباب",
+    title: "مخيم الشبيبة · الصفان 8–9",
     brandTitle: "YOUTH",
     brandColor: "#863b43",
     gradeLabel: "الصفان 8–9",
@@ -167,16 +167,16 @@ exports.campTemplates = [
   },
   {
     id: "spark-youth-plus",
-    title: "سبارك التحدّي",
-    brandTitle: "CHALLENGE",
+    title: "مخيم الشبيبة · الصفان 10–11",
+    brandTitle: "YOUTH",
     brandColor: "#71313a",
     gradeLabel: "الصفان 10–11",
     allowedGrades: ["العاشر", "الحادي عشر"],
   },
   {
     id: "spark-seniors",
-    title: "سبارك القادة",
-    brandTitle: "LEAD",
+    title: "مخيم الشبيبة · الصف 12+",
+    brandTitle: "YOUTH",
     brandColor: "#632a36",
     gradeLabel: "الصف 12 وما بعده",
     allowedGrades: ["الثاني عشر", "الثاني عشر+", "جامعي"],
@@ -186,7 +186,7 @@ exports.campTemplates = [
   },
   {
     id: "spark-sport",
-    title: "سبارك الرياضي",
+    title: "المخيم الرياضي",
     brandTitle: "SPORT",
     brandColor: "#08683d",
     gradeLabel: "الصفوف 9–12+",
@@ -244,7 +244,37 @@ exports.normalizeContent = (value) => {
   return {
     ...c,
     schemaVersion: exports.contentVersion,
-    activities: activities.map(exports.normalizeActivity),
+    announcements: (c.announcements || []).map((a) =>
+      a.id === "a1" && a.title === "موعدنا تحت النجوم"
+        ? { ...a, title: "أخبار المخيم والتسجيل" }
+        : a,
+    ),
+    activities: activities.map((a) => {
+      const oldNames = {
+        "camp-demo": "مخيم سبارك · تحت النجوم",
+        "spark-kids": "سبارك الصغار",
+        "spark-explorers": "سبارك المستكشفين",
+        "spark-youth": "سبارك الشباب",
+        "spark-youth-plus": "سبارك التحدّي",
+        "spark-seniors": "سبارك القادة",
+        "spark-sport": "سبارك الرياضي",
+      };
+      const current = exports.defaultContent.activities.find(
+        (x) => x.id === a.id,
+      );
+      return exports.normalizeActivity(
+        a.title === oldNames[a.id] && current
+          ? {
+              ...a,
+              title: current.title,
+              ...(current.brandTitle &&
+              ["EXPLORE", "CHALLENGE", "LEAD"].includes(a.brandTitle)
+                ? { brandTitle: current.brandTitle }
+                : {}),
+            }
+          : a,
+      );
+    }),
   };
 };
 

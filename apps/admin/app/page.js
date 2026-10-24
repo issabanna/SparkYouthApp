@@ -422,7 +422,10 @@ export default function Dashboard() {
             {registrations.map((r) => (
               <article key={r.id} style={{ marginBottom: 18 }}>
                 <div className="panelTitle">
-                  <h2>{r.activityTitle}</h2>
+                  <h2>
+                    {content.activities.find((a) => a.id === r.activityId)
+                      ?.title || r.activityTitle}
+                  </h2>
                   <span>{statuses[r.status]}</span>
                 </div>
                 <p>

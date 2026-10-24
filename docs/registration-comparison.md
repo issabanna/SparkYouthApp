@@ -31,7 +31,7 @@ The screenshots supplied in chat are the field and workflow reference, not a req
 
 ## Camp names, grade groups and branding
 
-Editable reference-inspired templates use Spark branding: purple Kids (grades 3–5) and Explorers (6–7), burgundy Youth (8–9), Challenge (10–11), Leaders (12+), and green Sport (9–12+). The reference birth-year ranges 2008–2009 and 2008–2012 are configured separately from grades. Grades are not interpreted as ages. These templates are inactive and have no dates: the pictured 2026 dates are historical and are not advertised as current bookings. A versioned migration adds templates once and preserves existing edits and deletions.
+Editable reference-inspired templates use Spark branding: purple «مخيم الأطفال» groups (grades 3–5 and 6–7), burgundy «مخيم الشبيبة» groups (8–9, 10–11 and 12+), and green «المخيم الرياضي» (9–12+). The reference birth-year ranges 2008–2009 and 2008–2012 are configured separately from grades. Grades are not interpreted as ages. These templates are inactive and have no dates: the pictured 2026 dates are historical and are not advertised as current bookings. A versioned migration adds templates once and preserves existing edits and deletions.
 
 ## Preview boundaries
 

@@ -22,10 +22,7 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3016";
     await page.getByRole("button", { name: "دخول تجريبي" }).click();
     await page.getByRole("tab", { name: "الأنشطة", exact: true }).click();
     await page.getByRole("button", { name: "مخيمات", exact: true }).click();
-    const kids = page
-      .getByText("سبارك الصغار", { exact: true })
-      .last()
-      .locator("../..");
+    const kids = page.getByTestId("activity-card-spark-kids");
     await kids
       .getByRole("button", { name: "غير فعّال", exact: true })
       .waitFor();
@@ -35,15 +32,10 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3016";
         .isDisabled(),
     );
     assert(
-      (await kids.innerText())
-        .replace(/[\u2066-\u2069]/g, "")
-        .includes("الصفوف 3–5"),
+      (await kids.innerText()).replace(/[\u2066-\u2069]/g, "").includes("3–5"),
     );
     await kids.screenshot({ path: "/workspace/review/spark-kids-card.png" });
-    const sport = page
-      .getByText("سبارك الرياضي", { exact: true })
-      .last()
-      .locator("../..");
+    const sport = page.getByTestId("activity-card-spark-sport");
     await sport.screenshot({ path: "/workspace/review/spark-sport-card.png" });
     await admin.goto(base);
     await admin
@@ -52,7 +44,10 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3016";
     await admin
       .locator("article")
       .filter({
-        has: admin.getByRole("heading", { name: "سبارك الصغار", exact: true }),
+        has: admin.getByRole("heading", {
+          name: "مخيم الأطفال · الصفوف 3–5",
+          exact: true,
+        }),
       })
       .getByRole("button", { name: "تعديل", exact: true })
       .click();
@@ -68,7 +63,9 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3016";
     );
     await page.waitForFunction(() =>
       Array.from(document.querySelectorAll("[style]")).some(
-        (e) => e.style.backgroundColor === "rgb(72, 45, 153)",
+        (e) =>
+          getComputedStyle(e).backgroundColor === "rgb(72, 45, 153)" ||
+          getComputedStyle(e).backgroundImage.includes("72, 45, 153"),
       ),
     );
     assert.deepEqual(errors, []);
