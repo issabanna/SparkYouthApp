@@ -96,7 +96,7 @@ exports.sampleProgress = [
 ];
 
 Object.assign(exports, require("./registrations"));
-exports.contentVersion = 5;
+exports.contentVersion = 6;
 exports.defaultContent.schemaVersion = exports.contentVersion;
 Object.assign(exports.defaultContent.activities[0], {
   kind: "event",
@@ -261,6 +261,9 @@ exports.normalizeContent = (value) => {
         : a,
     ),
     activities: activities.map((a) => {
+      // Preserve the old effective dropdown once, then use gradeOptions alone.
+      if ((value?.schemaVersion || 0) < 6 && a.allowedGrades?.length)
+        a = { ...a, gradeOptions: a.allowedGrades };
       // The open sample camp previously inherited tentsEnabled:false. Repair
       // saved previews once; subsequent admin choices remain authoritative.
       if ((value?.schemaVersion || 0) < 5 && a.id === "camp-demo")

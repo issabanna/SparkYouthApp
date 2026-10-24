@@ -180,7 +180,6 @@ export default function Dashboard() {
         "cityOptions",
         "schoolOptions",
         "shirtOptions",
-        "allowedGrades",
       ])
         if (draft[key])
           draft[key] = [
@@ -844,15 +843,6 @@ export default function Dashboard() {
                         onChange={e => { change(key, e.target.value); }} /></label>
                     ))}
                     <label>
-                      تعليمات المشاركة
-                      <textarea
-                        required
-                        maxLength={1500}
-                        value={draft.terms || normalizeActivity(draft).terms}
-                        onChange={(e) => change("terms", e.target.value)}
-                      />
-                    </label>
-                    <label>
                       وضع التسجيل
                       <select
                         aria-label="وضع التسجيل"
@@ -923,8 +913,7 @@ export default function Dashboard() {
                         />
                       </label>
                       {[
-                        ["instructions", "تعليمات التسجيل"],
-                        ["startInstructions", "تعليمات قبل البدء"],
+                        ["startInstructions", "تعليمات قبل التسجيل"],
                         [
                           "afterRegistrationInstructions",
                           "تعليمات بعد التسجيل",
@@ -939,6 +928,14 @@ export default function Dashboard() {
                             onChange={(e) => change(key, e.target.value)}
                           />
                         </label>
+                      ))}
+                    </fieldset>
+                    <fieldset className="campSettings">
+                      <legend>البيانات المطلوبة أثناء التسجيل</legend>
+                      <p>قوائم الخيارات مشتركة وتُعدّل من الإعدادات العامة.</p>
+                      {[["collectCity", "السؤال عن المدينة"], ["collectSchool", "السؤال عن المدرسة"], ["collectShirtSize", "السؤال عن مقاس التيشيرت"]].map(([key,label]) => (
+                        <label key={key} className="checkbox"><input type="checkbox" checked={draft[key] ?? normalizeActivity(draft)[key]}
+                          onChange={e => change(key,e.target.checked)} />{label}</label>
                       ))}
                     </fieldset>
                     {draft.kind === "camp" && (
@@ -964,54 +961,6 @@ export default function Dashboard() {
                             }
                           />
                         </label>
-                        <label>
-                          وصف الصفوف على البطاقة
-                          <input
-                            value={draft.gradeLabel || ""}
-                            maxLength={100}
-                            onChange={(e) =>
-                              change("gradeLabel", e.target.value)
-                            }
-                          />
-                        </label>
-                        <label>
-                          وصف مواليد المخيم
-                          <input
-                            value={draft.birthYearLabel || ""}
-                            maxLength={100}
-                            onChange={(e) =>
-                              change("birthYearLabel", e.target.value)
-                            }
-                          />
-                        </label>
-                        <label>
-                          الصفوف المؤهلة
-                          <textarea
-                            value={(draft.allowedGrades || []).join("\n")}
-                            onChange={(e) =>
-                              change(
-                                "allowedGrades",
-                                e.target.value.split("\n"),
-                              )
-                            }
-                          />
-                          <small>
-                            خيار في كل سطر، ويجب أن يطابق اسم الصف. اتركه فارغًا
-                            لإتاحة جميع الصفوف.
-                          </small>
-                        </label>
-                        {[
-                          ["visitorsDate", "يوم الزيارة"],
-                        ].map(([key, label]) => (
-                          <label key={key}>
-                            {label}
-                            <input
-                              type="date"
-                              value={draft[key] || ""}
-                              onChange={(e) => change(key, e.target.value)}
-                            />
-                          </label>
-                        ))}
                         {[
                           ["waitlistMale", "قائمة الانتظار للذكور"],
                           ["waitlistFemale", "قائمة الانتظار للإناث"],
@@ -1058,8 +1007,7 @@ export default function Dashboard() {
                               }
                             />
                             <small>
-                              خيار واحد في كل سطر. اترك المدن أو المدارس فارغة
-                              للسماح بالكتابة الحرة.
+                              صف واحد في كل سطر. هذه هي الصفوف المتاحة والمسموحة للتسجيل في هذا المخيم.
                             </small>
                           </label>
                         ))}

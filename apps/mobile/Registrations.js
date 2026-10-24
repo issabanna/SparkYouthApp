@@ -15,7 +15,7 @@ import BirthDatePicker from "./BirthDatePicker";
 import CampPoster from "./CampPoster";
 import MediaImage from "./MediaImage";
 import QRCode from "react-native-qrcode-svg";
-import { CampIdentity, CampExtra, pickPreviewImage } from "./CampFields";
+import { CampIdentity, CampExtra, RegistrationChoices, pickPreviewImage } from "./CampFields";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   displayRange,
@@ -648,37 +648,11 @@ export default function Registrations({ content, user, onDone }) {
                   </Text>
                 </View>
                 <Text style={s.heading}>{activity.title}</Text>
-                {step === -1 && activity.kind === "camp" && (
-                  <Text style={s.body}>{activity.text}</Text>
-                )}
-                {!!activity.instructions && (
-                  <Text style={s.info}>{activity.instructions}</Text>
-                )}
                 {step === -1 && (
                   <>
-                    <Text style={s.title}>تعليمات قبل البدء</Text>
-                    <Text style={s.info}>{activity.startInstructions || "يرجى مراجعة بيانات النشاط وتعليمات المشاركة قبل بدء التسجيل."}</Text>
-                    {!!activity.visitorsDate && (
-                      <Text style={s.meta}>
-                        يوم الزيارة: {activity.visitorsDate}
-                      </Text>
-                    )}
-                    {!!activity.departureTime && (
-                      <Text style={s.meta}>
-                        المغادرة: {activity.departureTime.replace("T", " ")}
-                      </Text>
-                    )}
-                    {!!activity.arrivalTime && (
-                      <Text style={s.meta}>
-                        الوصول: {activity.arrivalTime.replace("T", " ")}
-                      </Text>
-                    )}
+                    <Text style={s.title}>تعليمات قبل التسجيل</Text>
+                    <Text style={s.info}>{activity.startInstructions || "يرجى مراجعة بيانات النشاط قبل بدء التسجيل."}</Text>
                   </>
-                )}
-                {activity.registrationTestMode && step < successStep && (
-                  <Text style={s.info}>
-                    وضع تجربة التسجيل: البيانات اختيارية. اختر الجنس والخيمة فقط عند تفعيل الخيام.
-                  </Text>
                 )}
                 <View style={s.progress}>
                   {Array.from(
@@ -774,10 +748,7 @@ export default function Registrations({ content, user, onDone }) {
                       keyboardType: "phone-pad",
                       maxLength: 10,
                     })}
-                    {!isCamp &&
-                      field("address", "المدينة أو العنوان", {
-                        maxLength: 200,
-                      })}
+                    {!isCamp && <RegistrationChoices {...{activity, details, update, errors, field}} />}
                     <Action secondary onPress={() => setStep(-1)}>السابق: التعليمات</Action>
                     <Action onPress={next}>
                       {isCamp
@@ -944,9 +915,6 @@ export default function Registrations({ content, user, onDone }) {
                             ["ولي الأمر", details.guardianName],
                             ["هاتف ولي الأمر", details.guardianPhone],
                             ["صاحب هاتف ولي الأمر", details.guardianPhoneOwner],
-                            ["المدينة", details.city],
-                            ["المدرسة", details.school],
-                            ["التيشيرت", details.shirtSize],
                             [
                               "التوصيات الطبية",
                               activity.collectMedical
@@ -976,7 +944,9 @@ export default function Registrations({ content, user, onDone }) {
                           ? `${activity.fees} ${activity.currency}`
                           : "مجانًا",
                       ],
-                      ["العنوان", details.address],
+                      ...(activity.collectCity ? [["المدينة", details.city]] : []),
+                      ...(activity.collectSchool ? [["المدرسة", details.school]] : []),
+                      ...(activity.collectShirtSize ? [["التيشيرت", details.shirtSize]] : []),
                     ].map(([k, v]) => (
                       <View key={k} style={s.summaryRow}>
                         <Text style={s.meta}>{k}</Text>
@@ -984,7 +954,6 @@ export default function Registrations({ content, user, onDone }) {
                       </View>
                     ))}
                     <Text style={s.title}>تعليمات المشاركة</Text>
-                    <Text style={s.info}>{activity.terms}</Text>
                     <Pressable
                       accessibilityRole="checkbox"
                       accessibilityLabel="أوافق على تعليمات المشاركة"

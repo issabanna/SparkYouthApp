@@ -59,7 +59,8 @@ assert.equal(
   normalizeContent({ ...migrated, activities: [] }).activities.length,
   0,
 );
-assert(validateCampSettings({ ...kids, allowedGrades: ["صف غير موجود"] }, []));
+assert.equal(validateCampSettings({ ...kids, allowedGrades: ["صف غير موجود"] }, []), null);
+assert(validateCampSettings({ ...kids, gradeOptions: [] }, []));
 console.log(
   "PASS: school grades are not ages, birth-year eligibility, inactive reference templates, editable branding and preserving legacy content on migration.",
 );

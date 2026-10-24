@@ -71,11 +71,7 @@ export function CampIdentity({ activity, details, update, errors, field }) {
       <Choice
         fieldKey="grade"
         label="صف المشارك"
-        options={
-          activity.allowedGrades.length
-            ? activity.allowedGrades
-            : activity.gradeOptions
-        }
+        options={activity.gradeOptions}
         {...{ details, update, errors }}
       />
     </>
@@ -103,32 +99,7 @@ export function CampExtra({
         options={["الأب", "الأم", "الوصي", "قريب", "آخر"]}
         {...{ details, update, errors }}
       />
-      {activity.cityOptions.length ? (
-        <Choice
-          fieldKey="city"
-          label="المدينة"
-          options={activity.cityOptions}
-          {...{ details, update, errors }}
-        />
-      ) : (
-        field("city", "المدينة", { maxLength: 100 })
-      )}
-      {activity.schoolOptions.length ? (
-        <Choice
-          fieldKey="school"
-          label="المدرسة"
-          options={activity.schoolOptions}
-          {...{ details, update, errors }}
-        />
-      ) : (
-        field("school", "المدرسة", { maxLength: 150 })
-      )}
-      <Choice
-        fieldKey="shirtSize"
-        label="مقاس التيشيرت"
-        options={activity.shirtOptions}
-        {...{ details, update, errors }}
-      />
+      <RegistrationChoices {...{ activity, details, update, errors, field }} />
       {activity.collectMedical && (
         <>
           {field("medicalNotes", "التوصيات الطبية", {
@@ -230,3 +201,34 @@ const s = StyleSheet.create({
     marginTop: 12,
   },
 });
+
+export function RegistrationChoices({activity, details, update, errors, field}) {
+  return <>
+      {activity.collectCity && (activity.cityOptions.length ? (
+        <Choice
+          fieldKey="city"
+          label="المدينة"
+          options={activity.cityOptions}
+          {...{ details, update, errors }}
+        />
+      ) : (
+        field("city", "المدينة", { maxLength: 100 })
+      ))}
+      {activity.collectSchool && (activity.schoolOptions.length ? (
+        <Choice
+          fieldKey="school"
+          label="المدرسة"
+          options={activity.schoolOptions}
+          {...{ details, update, errors }}
+        />
+      ) : (
+        field("school", "المدرسة", { maxLength: 150 })
+      ))}
+      {activity.collectShirtSize && <Choice
+        fieldKey="shirtSize"
+        label="مقاس التيشيرت"
+        options={activity.shirtOptions}
+        {...{ details, update, errors }}
+      />}
+  </>;
+}

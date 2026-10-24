@@ -71,6 +71,14 @@ const defaultTents = () =>
   }));
 const normalizeActivity = (a) => {
   const result = { ...activityDefaults, ...a };
+  result.gradeOptions = a.gradeOptions ?? (a.allowedGrades?.length ? a.allowedGrades : activityDefaults.gradeOptions);
+  result.allowedGrades = [];
+  result.useAgeLimits = false;
+  result.collectCity = a.collectCity ?? true;
+  result.collectSchool = a.collectSchool ?? result.kind === "camp";
+  result.collectShirtSize = a.collectShirtSize ?? result.kind === "camp";
+  result.gradeLabel = result.kind === "camp" ? `الصفوف: ${result.gradeOptions.filter(Boolean).join("، ")}` : "";
+  result.birthYearLabel = [result.dobMin, result.dobMax].filter(Boolean).map(date => date.slice(0,4)).join("–");
   // All occupancy comes from app registrations; ignore legacy manual counts.
   result.seatsTaken = 0;
   result.inactive = !!(a.inactive ?? a.preparing ?? false);
@@ -199,6 +207,9 @@ function validateDetails(d, a, stage = "all") {
         (a.tentsEnabled || a.registrationMode === "waitingList") &&
         !["male", "female"].includes(d.gender))
       errors.gender = "اختر الجنس لعرض الخيام المناسبة.";
+    if (d.dob && (!validDate(d.dob) || d.dob > new Date().toISOString().slice(0,10) ||
+      (a.dobMin && d.dob < a.dobMin) || (a.dobMax && d.dob > a.dobMax)))
+      errors.dob = "تاريخ الميلاد خارج النطاق المسموح.";
     return errors;
   }
   if (
@@ -219,12 +230,9 @@ function validateDetails(d, a, stage = "all") {
     errors.phone = "أدخل رقم هاتف من 10 أرقام.";
   if (
     !Number.isInteger(Number(d.age)) ||
-    !d.age ||
-    (a.useAgeLimits && (Number(d.age) < a.minAge || Number(d.age) > a.maxAge))
+    !d.age
   )
-    errors.age = `العمر المسموح من ${a.minAge} إلى ${a.maxAge} سنة.`;
-  if (a.kind !== "camp" && !d.address?.trim())
-    errors.address = "أدخل المدينة أو العنوان.";
+    errors.dob = "اختر تاريخ الميلاد لحساب العمر.";
   const today = new Date().toISOString().slice(0, 10);
   {
     if (!validDate(d.dob || "") || d.dob > today)
@@ -234,11 +242,16 @@ function validateDetails(d, a, stage = "all") {
     else {
       const age = ageAt(d.dob, a.startDate || a.date || today);
       if (
-        (a.useAgeLimits && (age < a.minAge || age > a.maxAge)) ||
         age !== Number(d.age)
       )
         errors.dob = "راجع العمر وتاريخ الميلاد وفق تاريخ بدء المخيم.";
     }
+  }
+  if (a.kind !== "camp" || stage !== "participant") {
+    if (a.collectCity !== false && (!(d.city || (a.kind !== "camp" ? d.address : ""))?.trim() ||
+      (a.cityOptions.length && !a.cityOptions.includes(d.city)))) errors.city = "أدخل المدينة أو اخترها.";
+    if (a.collectSchool && (!d.school?.trim() || (a.schoolOptions.length && !a.schoolOptions.includes(d.school)))) errors.school = "أدخل المدرسة أو اخترها.";
+    if (a.collectShirtSize && !a.shirtOptions.includes(d.shirtSize)) errors.shirtSize = "اختر مقاس التيشيرت.";
   }
   if (a.kind === "camp") {
     if ((d.arabicFullName || "").trim().split(/\s+/).length < 3)
@@ -248,8 +261,7 @@ function validateDetails(d, a, stage = "all") {
     if (a.requireNationalId && !/^[A-Za-z0-9-]{4,30}$/.test(d.nationalId || ""))
       errors.nationalId = "أدخل الرقم الوطني أو رقم الوثيقة الصحيح.";
     if (
-      !a.gradeOptions.includes(d.grade) ||
-      (a.allowedGrades.length && !a.allowedGrades.includes(d.grade))
+      !a.gradeOptions.includes(d.grade)
     )
       errors.grade = "اختر صف المشارك.";
     if (stage !== "participant") {
@@ -260,18 +272,6 @@ function validateDetails(d, a, stage = "all") {
         !["الأب", "الأم", "الوصي", "قريب", "آخر"].includes(d.guardianPhoneOwner)
       )
         errors.guardianPhoneOwner = "اختر صاحب رقم الهاتف.";
-      if (
-        !d.city?.trim() ||
-        (a.cityOptions.length && !a.cityOptions.includes(d.city))
-      )
-        errors.city = "أدخل المدينة أو اخترها.";
-      if (
-        !d.school?.trim() ||
-        (a.schoolOptions.length && !a.schoolOptions.includes(d.school))
-      )
-        errors.school = "أدخل المدرسة أو اخترها.";
-      if (!a.shirtOptions.includes(d.shirtSize))
-        errors.shirtSize = "اختر مقاس التيشيرت.";
       if (a.collectMedical && !d.medicalNotes?.trim())
         errors.medicalNotes = "اذكر التوصيات الطبية، أو اكتب لا يوجد.";
       if (a.collectMedical && !d.allergies?.trim())
@@ -474,13 +474,8 @@ module.exports.validateCampSettings = (activity, records) => {
   const a = normalizeActivity(activity);
   if (
     a.kind === "camp" &&
-    a.allowedGrades.some((g) => !a.gradeOptions.includes(g))
-  )
-    return "الصفوف المؤهلة يجب أن تطابق خيارات الصفوف المتاحة.";
-  if (
-    a.kind === "camp" &&
     (!a.gradeOptions.filter(Boolean).length ||
-      !a.shirtOptions.filter(Boolean).length)
+      (a.collectShirtSize && !a.shirtOptions.filter(Boolean).length))
   )
     return "أضف خيارات الصفوف ومقاسات التيشيرت.";
   if (a.registrationMode === "waitingList" && !a.allowWaitlist)
