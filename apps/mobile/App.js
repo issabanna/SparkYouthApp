@@ -1480,14 +1480,14 @@ const s = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 20,
+    paddingTop: 14,
+    paddingBottom: 14,
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFDA00",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ECE9E1",
   },
   brand: {
     fontSize: 25,
@@ -1497,7 +1497,7 @@ const s = StyleSheet.create({
   },
   tagline: {
     fontSize: 10,
-    color: "#655823",
+    color: "#716E65",
     textAlign: "right",
     marginTop: 2,
   },
