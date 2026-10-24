@@ -8,13 +8,14 @@
   "scripts": {
     "admin": "npm run dev --workspace @spark/admin",
     "mobile": "npm run start --workspace @spark/mobile",
-    "build": "npm run build:mobile-web && npm run build --workspace @spark/admin",
+    "build": "npm run seed:images && npm run build:mobile-web && npm run build --workspace @spark/admin",
     "build:mobile-web": "npm run export:web --workspace @spark/mobile && node scripts/prepare-mobile-web.cjs",
     "test:preview": "node tests/camping-preview.cjs",
     "test:registrations": "node tests/registration-rules.cjs && node tests/registrations-preview.cjs",
     "test:tents": "node tests/tent-rules.cjs && node tests/tents-preview.cjs",
     "test:family": "node tests/family-registration-rules.cjs && node tests/family-registration-preview.cjs",
-    "test:branding": "node tests/camp-branding-rules.cjs"
+    "test:branding": "node tests/camp-branding-rules.cjs",
+    "seed:images": "node scripts/seed-admin-images.cjs"
   },
   "overrides": {
     "react": "19.1.0",

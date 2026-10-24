@@ -35,7 +35,10 @@ function validateContent(value) {
 function publicContent(value) {
   const c=validateContent(value);
   return {schemaVersion:c.schemaVersion,registrationTestMode:c.registrationTestMode,
-    ...(c.branding?.logo?{branding:{logo:c.branding.logo}}:{}),
+    ...(c.branding?{branding:{
+      ...(typeof c.branding.logo==='string'?{logo:c.branding.logo}:{}),
+      ...(typeof c.branding.welcomeImage==='string'?{welcomeImage:c.branding.welcomeImage}:{}),
+    }}:{}),
     activities:c.activities.filter(x=>x.published),
     announcements:c.announcements.filter(x=>x.published),
     galleries:c.galleries.filter(x=>x.published),

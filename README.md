@@ -89,3 +89,5 @@ Camp cards now use taller framed color bands, larger circular photos, oversized 
 ## Images and publishing
 
 See [image publishing setup](docs/image-publishing.md) and run [the Supabase SQL setup](supabase/001_content_and_images.sql) in the chosen project. Admins can upload content photos from their device; configured Supabase storage publishes them to the app. Sample photos are bundled into the native APK. See [Android preview builds](docs/android-preview.md) for APK verification and download metadata.
+
+When server-side Supabase settings are configured, `npm run build` also imports the initial sample images into the private bucket and connects their references to admin content. This importer preserves custom uploads/settings and skips already migrated content; see `docs/image-publishing.md`.

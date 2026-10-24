@@ -26,8 +26,12 @@ try{
  const c=structuredClone(service.defaultContent);c.announcements.push({id:'draft',published:false,title:'Private draft'});
  c.journeys.push({id:'leader-private',published:true,audience:'leaders',title:'Private leadership content'});
  c.privateAdminSetting='private-fixture';
+ c.branding={logo:'/media/spark-logo.png',welcomeImage:'/api/media/welcome.jpeg',privateSetting:'private'};
  const publicData=service.publicContent(c);
  assert.equal(publicData.privateAdminSetting,undefined);
+ assert.equal(publicData.branding.welcomeImage,'/api/media/welcome.jpeg');
+ assert.equal(publicData.branding.privateSetting,undefined);
+ assert.equal(service.publicContent({...c,branding:{welcomeImage:''}}).branding.welcomeImage,'');
  assert(!publicData.announcements.some(x=>x.id==='draft'));
  assert(!publicData.journeys.some(x=>x.audience==='leaders'));
  assert.deepEqual(publicData.comments,[]);

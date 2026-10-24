@@ -32,3 +32,11 @@ This update uses Supabase Database and Storage. Admin access currently uses the 
 - `node tests/media-publishing-preview.cjs`: browser/app shared publishing contract using deterministic storage responses. This does not validate a real Supabase upload.
 - `npm run build`: mobile web export and production admin/API build.
 - Android `assembleRelease`, signature verification and resource inspection confirm sample photos and the logo are packaged into the APK. Actual Supabase connectivity and a user's authenticated upload must be checked on the deployment with its configured credentials.
+
+## Initial admin-managed photos
+
+The deployment build runs `npm run seed:images` before exporting the app. With Supabase configured, it uploads the four existing starter PNGs to the private bucket and changes only their known starter-image references in the admin snapshot to `/api/media/<id>` paths. The welcome photo and logo are included. Custom uploads, text/settings and an explicitly removed welcome photo are preserved. Content updates use an optimistic timestamp check so a concurrent admin save is not overwritten. The importer is idempotent and uses content-hash image IDs.
+
+The native app caches those exact immutable starter-image IDs using its bundled copies. Replacing an image from admin generates a different ID, so the replacement loads normally without an APK rebuild. The welcome/sign-in photo can be uploaded or removed from the overview page. Native launcher/store icons remain part of the application build.
+
+`node tests/admin-image-import.cjs` validates repeatability, private-bucket checks, preservation of custom images/removals and concurrent-update handling.

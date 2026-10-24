@@ -321,13 +321,10 @@ export default function App() {
       </View>
       {!user ? (
         <ScrollView contentContainerStyle={s.content}>
-          <Photo
-            path="/media/camp.png"
-            style={{
-              height: 230,
-              borderRadius: 24,
-            }}
-          />
+          {(content.branding?.welcomeImage ?? "/media/camp.png") !== "" && <Photo
+            path={content.branding?.welcomeImage ?? "/media/camp.png"}
+            style={{height: 230, borderRadius: 24}}
+          />}
           <Text style={s.kicker}>أصدقاء. مغامرة. أثر.</Text>
           <Text style={s.heroTitle}>كل مخيم بداية حكاية</Text>
           <Text style={s.body}>

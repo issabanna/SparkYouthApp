@@ -287,6 +287,21 @@ export default function Dashboard() {
       setMessage("تعذّر حفظ مراجعة الوصل.");
     }
   };
+  async function storePhoto(file){
+    const blob=await prepareImage(file);
+    if(cloud!=='remote')return imageData(blob);
+    const response=await fetch('/api/media',{method:'POST',headers:{'Content-Type':blob.type},body:blob});
+    const result=await response.json();if(!response.ok)throw new Error(result.error);
+    return result.image;
+  }
+  async function uploadWelcomeImage(e){
+    const file=e.target.files?.[0];e.target.value='';if(!file)return;
+    setBusy(true);setMessage('جارٍ تجهيز الصورة…');
+    try{
+      const image=await storePhoto(file);
+      persist({...content,branding:{...content.branding,welcomeImage:image}});
+    }catch(error){setMessage(error.message)}finally{setBusy(false)}
+  }
   const uploadActivityImage = async (e) => {
     const files=Array.from(e.target.files || []);e.target.value='';
     if(!files.length)return;
@@ -294,12 +309,7 @@ export default function Dashboard() {
     try{
       const images=[];
       for(const file of files){
-        const blob=await prepareImage(file);
-        if(cloud==='remote'){
-          const response=await fetch('/api/media',{method:'POST',headers:{'Content-Type':blob.type},body:blob});
-          const result=await response.json();if(!response.ok)throw new Error(result.error);
-          images.push(result.image);
-        }else images.push(await imageData(blob));
+        images.push(await storePhoto(file));
       }
       if(section==='galleries')change('images',[...draft.images,...images]);else change('image',images[0]);
       setMessage('تم تجهيز الصور. احفظ المحتوى'+(cloud==='remote'?' ثم انشر التغييرات للتطبيق.':'. الصور محفوظة في معاينة هذا المتصفح فقط حتى ربط التخزين.'));
@@ -443,8 +453,8 @@ export default function Dashboard() {
             <section className="panel">
               <h2>شعار سبارك</h2>
               <p>
-                استخدم نسخة الشعار المخصصة للخلفية البيضاء. ارفع الملف الأصلي
-                ليظهر هنا وفي تطبيق المعاينة على المتصفح نفسه.
+                ارفع نسخة الشعار المخصصة للخلفية البيضاء، ثم انشر التغييرات
+                لتظهر في الموقع والتطبيق.
               </p>
               <label className="logoUpload">
                 رفع الشعار الأصلي
@@ -462,6 +472,16 @@ export default function Dashboard() {
                   className="brandLogo"
                 />
               )}
+            </section>
+            <section className="panel">
+              <h2>صورة الترحيب وتسجيل الدخول</h2>
+              <label>رفع صورة الترحيب
+                <input aria-label="رفع صورة الترحيب" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={uploadWelcomeImage} />
+              </label>
+              {(content.branding?.welcomeImage ?? '/media/camp.png') && <>
+                <img src={content.branding?.welcomeImage ?? '/media/camp.png'} alt="معاينة صورة الترحيب" style={{width:240,maxWidth:'100%',height:160,objectFit:'cover',borderRadius:16}} />
+                <button type="button" disabled={busy} onClick={()=>persist({...content,branding:{...content.branding,welcomeImage:''}})}>إزالة صورة الترحيب</button>
+              </>}
             </section>
             <section className="panel">
               <h2>كيف يُحتسب الإنجاز؟</h2>
