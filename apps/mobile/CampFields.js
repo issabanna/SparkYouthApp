@@ -120,7 +120,8 @@ export function CampExtra({
       <Text style={s.note}>
         معاينة محلية فقط. استخدم صورة تجريبية، ولا ترفع وثيقة هوية حقيقية الآن.
       </Text>
-      <Pressable accessibilityRole="button" onPress={onImage} style={s.upload}>
+      <Text style={s.note}>عند اختيار الصورة، تُرسل إلى خدمة OpenAI لفحص نوعها ووضوحها فقط، دون التحقق من الهوية أو صحة الوثيقة.</Text>
+      <Pressable accessibilityRole="button" disabled={details.idDocument?.aiCheck?.status === "checking"} onPress={onImage} style={s.upload}>
         <Text style={s.uploadText}>
           {details.idDocument ? "استبدال صورة الهوية" : "اختيار صورة الهوية"}
         </Text>
@@ -132,6 +133,11 @@ export function CampExtra({
           accessibilityLabel="معاينة صورة الهوية"
         />
       )}
+      {details.idDocument?.aiCheck && <Text accessibilityRole="status" style={s.note}>
+        {details.idDocument.aiCheck.status === "checking" ? "جارٍ فحص الصورة…" : details.idDocument.aiCheck.message}
+        {details.idDocument.aiCheck.status !== "checking" && !details.idDocument.aiCheck.accepted
+          ? activity.idImageCheckPolicy === "reject" ? " يرجى إعادة اختيار صورة واجتياز الفحص للمتابعة." : " هذا تنبيه فقط؛ يمكنك المتابعة." : ""}
+      </Text>}
       {errors.idDocument && (
         <Text accessibilityRole="alert" style={s.error}>
           {errors.idDocument}

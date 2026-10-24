@@ -975,6 +975,13 @@ export default function Dashboard() {
                             {label}
                           </label>
                         ))}
+                        <label>فحص وضوح ونوع صورة التسجيل
+                          <select value={draft.idImageCheckPolicy || "warn"} onChange={e => change("idImageCheckPolicy",e.target.value)}>
+                            <option value="warn">تنبيه فقط والسماح بالمتابعة</option>
+                            <option value="reject">رفض الصورة غير الواضحة أو غير المناسبة</option>
+                          </select>
+                          <small>يقبل وثيقة هوية أو صورة شخصية واضحة. يتطلب OPENAI_API_KEY في إعدادات الخادم. عند تعذّر الفحص، وضع الرفض يطلب إعادة المحاولة.</small>
+                        </label>
                         {[
                           ["requireNationalId", "طلب الرقم الوطني"],
                           ["requireIdDocument", "طلب صورة الهوية"],

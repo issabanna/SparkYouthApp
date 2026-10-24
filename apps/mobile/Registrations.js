@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text as NativeText,
@@ -105,6 +105,8 @@ const blank = (user) => ({
   idDocument: null,
 });
 export default function Registrations({ content, user, onDone }) {
+  const imageCheckRequest = useRef(0);
+  useEffect(() => () => { imageCheckRequest.current++; }, []);
   const [records, setRecords] = useState(read),
     [filter, setFilter] = useState("all"),
     [activityId, setActivityId] = useState(null),
@@ -116,6 +118,7 @@ export default function Registrations({ content, user, onDone }) {
     [message, setMessage] = useState(""),
     [cancelId, setCancelId] = useState(null),
     [success, setSuccess] = useState(null),
+    [idChecking, setIdChecking] = useState(false),
     [receiptId, setReceiptId] = useState(null),
     [receiptImage, setReceiptImage] = useState(null),
     [receiptReference, setReceiptReference] = useState(""),
@@ -172,6 +175,8 @@ export default function Registrations({ content, user, onDone }) {
     }
   };
   const open = (a) => {
+    imageCheckRequest.current++;
+    setIdChecking(false);
     setActivityId(a.id);
     setStep(-1);
     setInstructionsAccepted(false);
@@ -265,6 +270,7 @@ export default function Registrations({ content, user, onDone }) {
     if (!Object.keys(e).length) setStep(1);
   };
   const submit = () => {
+    if (idChecking) return;
     const latest = Platform.OS === "web" ? read() : records;
     const result = submitRegistration(activity, user, details, latest, consent);
     if (result.error) {
@@ -277,17 +283,35 @@ export default function Registrations({ content, user, onDone }) {
     }
   };
   const nextCampExtra = () => {
+    if (idChecking) return;
     const e = validateDetails(details, activity, "extra");
     setErrors(e);
     if (!Object.keys(e).length) setStep(hasTentStep ? servicesStep : reviewIndex);
   };
   const chooseId = async () => {
+    if (idChecking) return;
+    const requestId = ++imageCheckRequest.current;
     try {
       const image = await pickPreviewImage();
-      if (image) update("idDocument", image);
-    } catch (error) {
-      setMessage(error.message);
-    }
+      if (!image || requestId !== imageCheckRequest.current) return;
+      update("idDocument", {...image,aiCheck:{status:"checking"}});
+      setIdChecking(true);
+      let check;
+      const checkController = new AbortController();
+      const checkTimeout = setTimeout(() => checkController.abort(),25000);
+      try {
+        const origin=Platform.OS==='web'?'':'https://sparkyouth.vercel.app';
+        const response=await fetch(origin+'/api/registration-image-check',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({activityId:activity.id,image:image.uri}),signal:checkController.signal,
+        });
+        check=await response.json();
+        if(!response.ok||check.status!=='checked')check={status:'unavailable',accepted:false,message:check.message||'تعذّر فحص الصورة الآن.'};
+      } catch {check={status:'unavailable',accepted:false,message:'تعذّر فحص الصورة الآن. حاول مجددًا.'};}
+      clearTimeout(checkTimeout);
+      if (requestId === imageCheckRequest.current) update("idDocument",{...image,aiCheck:check});
+    } catch (error) { setMessage(error.message); }
+    finally {if (requestId === imageCheckRequest.current) setIdChecking(false);}
   };
   const uploadReceipt = () => {
     const latest = Platform.OS === "web" ? read() : records;
@@ -769,7 +793,7 @@ export default function Registrations({ content, user, onDone }) {
                       }}
                       onImage={chooseId}
                     />
-                    <Action onPress={nextCampExtra}>
+                    <Action disabled={idChecking} onPress={nextCampExtra}>
                       {hasTentStep ? "التالي: اختيار الخيمة" : "التالي: مراجعة الطلب"}
                     </Action>
                     <Action secondary onPress={() => setStep(0)}>

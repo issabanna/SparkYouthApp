@@ -40,3 +40,11 @@ The deployment build runs `npm run seed:images` before exporting the app. With S
 The native app caches those exact immutable starter-image IDs using its bundled copies. Replacing an image from admin generates a different ID, so the replacement loads normally without an APK rebuild. The welcome/sign-in photo can be uploaded or removed from the overview page. Native launcher/store icons remain part of the application build.
 
 `node tests/admin-image-import.cjs` validates repeatability, private-bucket checks, preservation of custom images/removals and concurrent-update handling.
+
+### Registration image checks
+
+Set `OPENAI_API_KEY` in Vercel's server environment and redeploy to enable the optional AI check. Keep this key out of the mobile app and source control. The server uses `gpt-4.1-mini` to classify an uploaded PNG/JPEG/WebP (up to 500 KB) as an ID document, personal portrait, unrelated image, or unclear. It requests no transcription or identity verification and sends `store: false`. The selected image is sent to OpenAI; the registration upload screen explains this before selection. This endpoint does not save the image to shared storage.
+
+Each camp has **فحص وضوح ونوع صورة التسجيل**: the default warns and allows continuation; **رفض الصورة غير الواضحة أو غير المناسبة** requires a clear document or portrait result before continuing with that upload. A missing key, timeout, or provider failure is shown as unavailable, never as a successful check. Strict mode blocks an uploaded image until a successful check; optional missing uploads in registration test mode remain optional. These are preview form checks, not identity or document-authenticity verification.
+
+The public preview endpoint has per-instance request limits (5 per IP and 100 total per hour). Before production camper accounts and sensitive document uploads, use authenticated registrations and a shared durable rate limiter; the existing preview registration state and image-check result are client-held.

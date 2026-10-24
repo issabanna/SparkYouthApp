@@ -74,6 +74,7 @@ const normalizeActivity = (a) => {
   result.gradeOptions = a.gradeOptions ?? (a.allowedGrades?.length ? a.allowedGrades : activityDefaults.gradeOptions);
   result.allowedGrades = [];
   result.useAgeLimits = false;
+  result.idImageCheckPolicy = a.idImageCheckPolicy === "reject" ? "reject" : "warn";
   result.collectCity = a.collectCity ?? true;
   result.collectSchool = a.collectSchool ?? result.kind === "camp";
   result.collectShirtSize = a.collectShirtSize ?? result.kind === "camp";
@@ -202,6 +203,9 @@ const duplicateParticipant = (records, activityId, user, details) =>
   });
 function validateDetails(d, a, stage = "all") {
   const errors = {};
+  if (a.kind === "camp" && stage !== "participant" && d.idDocument && a.idImageCheckPolicy === "reject" &&
+      !(d.idDocument.aiCheck?.status === "checked" && d.idDocument.aiCheck.accepted === true))
+    errors.idDocument = "اختر صورة هوية أو صورة شخصية واضحة واجتز فحص الصورة قبل المتابعة.";
   if (a.registrationTestMode === true) {
     if (stage !== "extra" &&
         (a.tentsEnabled || a.registrationMode === "waitingList") &&
