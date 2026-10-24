@@ -1,0 +1,16 @@
+{
+  "version": "0.1.2",
+  "package": "app.sparkyouth.mobile",
+  "versionCode": 3,
+  "minimumAndroid": "7.0",
+  "architectures": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "bytes": 24165532,
+  "sha256": "7c085d39094cf09c2f3e2f33ee95d37a9f401cf4a3e48eb3e31af5a1381c0282",
+  "sourceCommit": "808fcbb756505292ebbf166bb56fdbd6f5fa39d7",
+  "signing": "Android debug key for preview testing",
+  "deviceTested": false,
+  "bundledSampleImages": true
+}

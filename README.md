@@ -1,6 +1,6 @@
 # Spark Youth
 
-Arabic-first replacement foundation: Expo mobile app (Android/iOS) and Next.js web administration. UI copy is prepared for future English localization; mobile strings live in packages/shared. Current screens are explicitly prototypes with no authentication, backend, live records, or migration. Do not deploy the admin publicly before implementing authorization.
+Arabic-first replacement foundation: Expo mobile app (Android/iOS) and Next.js web administration. UI copy is prepared for future English localization; mobile strings live in packages/shared. Published content and images can use Supabase with password-protected admin publishing. Camper accounts, registration records, leader approvals and attendance remain prototypes; no Adalo data has been migrated.
 
 ## Development
 
@@ -16,15 +16,15 @@ Use the existing checkout; a separate worktree is unnecessary.
 
 1. Database and authenticated Youth / Leader / Admin permissions enforced by the backend.
 2. Shared backend persistence and transactional camper/tent/receipt/approval rules for the implemented Arabic registration UI.
-3. Authenticated admin access and server-side audit records for program and registration management.
-4. Learning, moderated wall, notifications and QR/bus attendance.
+3. Per-admin accounts and server-side audit records for program and registration management.
+4. Shared learning comments, notifications and QR/bus attendance.
 5. Adalo migration planning, privacy/guardian requirements, device testing and store delivery.
 
 No existing data is imported. Capacity policy, consent requirements, branding assets and data migration still need final product decisions. Never store plaintext passwords in the Users table.
 
 ## Mobile browser review
 
-`npm run build` exports the Expo mobile UI to the admin public/app directory before building Next.js. Visit `/app/` on the deployed site to review the mobile prototype. This is the same React Native screen rendered for web, not a native device test. No login or live backend is connected.
+`npm run build` exports the Expo mobile UI to the admin public/app directory before building Next.js. Visit `/app/` on the deployed site to review the mobile prototype. This is the same React Native screen rendered for web, not a native device test. Camper sign-in remains a demo; shared public content and images load when Supabase is configured.
 
 ## Camping community preview
 
@@ -80,8 +80,12 @@ See [the field-by-field comparison](docs/registration-comparison.md) for the fie
 
 Six editable Spark camp templates use school-grade groups and birth-year restrictions from the reference branding. They start inactive with no dates; the past 2026 poster dates are not reused as upcoming events. Content version 3 preserves existing edits and adds templates once. Real Facebook photos still have not been imported; original image files remain needed.
 
-Run `npm run test:family` for the complete multi-camper/receipt browser workflow (set CHROMIUM_PATH and SPARK_TEST_URL), and `npm run test:branding` for eligibility/template migration checks. Native photo selection uses Expo Image Picker; camera and microphone permissions are disabled because the flow only selects existing images. Native distribution still needs signing/accounts and device QA.
+Run `npm run test:family` for the complete multi-camper/receipt browser workflow (set CHROMIUM_PATH and SPARK_TEST_URL), and `npm run test:branding` for eligibility/template migration checks. Native photo selection uses Expo Image Picker; camera and microphone permissions are disabled because the flow only selects existing images. The Android APK uses a preview signing key; store distribution still needs production signing/accounts and device QA.
 
 ## Camp poster redesign and familiar names
 
 Camp cards now use taller framed color bands, larger circular photos, oversized outlined category names and a compact information footer. Home uses a compact version of the same poster. Familiar categories replace invented seed names: «مخيم الأطفال», «مخيم الشبيبة» and «المخيم الرياضي», with school grades displayed separately. Content version 4 renames only exact old seed titles and announcement wording; custom admin names, capacity, images, registrations and prior deletions remain intact. Existing saved registration lists display the current camp title while keeping original record snapshots.
+
+## Images and publishing
+
+See [image publishing setup](docs/image-publishing.md) and run [the Supabase SQL setup](supabase/001_content_and_images.sql) in the chosen project. Admins can upload content photos from their device; configured Supabase storage publishes them to the app. Sample photos are bundled into the native APK. See [Android preview builds](docs/android-preview.md) for APK verification and download metadata.

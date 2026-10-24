@@ -12,3 +12,4 @@ apps/mobile/ios/
 *.apk
 !apps/admin/public/downloads/spark-youth-preview-0.1.0.apk
 !apps/admin/public/downloads/spark-youth-preview-0.1.1.apk
+!apps/admin/public/downloads/spark-youth-preview-0.1.2.apk
