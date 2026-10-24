@@ -29,17 +29,8 @@ assert.deepEqual(
   eligibleTents(a, "female").map((t) => t.number),
   [7, 8, 9, 10, 11, 12, 13],
 );
-const d = {
-  firstName: "أول",
-  lastName: "عائلة",
-  email: "demo@example.com",
-  gender: "male",
-  age: "16",
-  phone: "0790000000",
-  address: "مدينة",
-  registrationRole: "camper",
-  tentNumber: "0",
-};
+const { campDetails } = require("./camp-fixtures.cjs");
+const d = campDetails();
 assert(
   submitRegistration(a, { name: "a" }, { ...d, tentNumber: "" }, [], true)
     .error,
@@ -64,7 +55,13 @@ assert(
 let records = [];
 for (let i = 0; i < 10; i++)
   records.push(
-    submitRegistration(a, { name: "u" + i }, d, records, true).record,
+    submitRegistration(
+      a,
+      { name: "u" + i },
+      { ...d, nationalId: "DEMO-" + i },
+      records,
+      true,
+    ).record,
   );
 assert(records.every((r) => r.status === "Pending"));
 assert.equal(tentAvailable(a, 0, records), 0);
@@ -137,7 +134,7 @@ assert.equal(
   submitRegistration(
     a,
     { name: "female" },
-    { ...d, gender: "female", tentNumber: "7" },
+    { ...d, nationalId: "DEMO-FEMALE", gender: "female", tentNumber: "7" },
     records,
     true,
   ).record.status,

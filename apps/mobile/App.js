@@ -24,6 +24,7 @@ import {
 import Registrations from "./Registrations";
 import {
   normalizeContent,
+  contentVersion,
   ar,
   defaultContent,
   storageKey,
@@ -101,7 +102,7 @@ const save = (key, value) => {
 const readContent = () => {
   const raw = load(storageKey, defaultContent);
   const content = normalizeContent(raw);
-  if (raw.schemaVersion !== 2) {
+  if (raw.schemaVersion !== contentVersion) {
     try {
       save(storageKey, content);
     } catch {}
@@ -384,10 +385,10 @@ export default function App() {
                   ))}
                 </View>
                 <View style={s.sectionHeader}>
-                  <Text style={s.sectionTitle}>المغامرة القادمة</Text>
+                  <Text style={s.sectionTitle}>المخيمات والأنشطة</Text>
                   <View style={s.liveBadge}>
                     <View style={s.liveDot} />
-                    <Text style={s.liveText}>قريبًا</Text>
+                    <Text style={s.liveText}>اكتشف</Text>
                   </View>
                 </View>
                 {content.activities
@@ -408,7 +409,7 @@ export default function App() {
                             color="#6b6b6b"
                           />
                           <Text style={s.caption}>
-                            {a.date || "الموعد يُعلن قريبًا"} · {a.location}
+                            {a.date || "الموعد غير محدد"} · {a.location}
                           </Text>
                         </View>
                         <Button

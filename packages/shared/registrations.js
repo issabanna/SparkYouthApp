@@ -23,6 +23,34 @@ const activityDefaults = {
   waitlistFemale: true,
   tentsEnabled: false,
   inactive: false,
+  useAgeLimits: true,
+  allowedGrades: [],
+  brandColor: "#5149ae",
+  brandTitle: "",
+  gradeLabel: "",
+  birthYearLabel: "",
+  requireNationalId: true,
+  requireIdDocument: true,
+  requireReceipt: true,
+  collectMedical: true,
+  gradeOptions: [
+    "الثالث",
+    "الرابع",
+    "الخامس",
+    "السادس",
+    "السابع",
+    "الثامن",
+    "التاسع",
+    "العاشر",
+    "الحادي عشر",
+    "الثاني عشر",
+    "الثاني عشر+",
+    "جامعي",
+    "آخر",
+  ],
+  cityOptions: [],
+  schoolOptions: [],
+  shirtOptions: ["XS", "S", "M", "L", "XL", "XXL"],
   terms:
     "ألتزم بتعليمات السلامة واحترام المشاركين. هذا نص تجريبي يحتاج اعتماد الإدارة.",
 };
@@ -137,11 +165,41 @@ const activeRegistration = (records, activityId, user) =>
       r.ownerKey === ownerKey(user) &&
       ["Pending", "Confirmed", "Waiting"].includes(r.status),
   );
-function validateDetails(d, a) {
+const cleanName = (value) =>
+  (value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+const duplicateParticipant = (records, activityId, user, details) =>
+  records.find((r) => {
+    if (
+      r.activityId !== activityId ||
+      !["Pending", "Confirmed", "Waiting"].includes(r.status)
+    )
+      return false;
+    const id1 = (r.details.nationalId || "")
+        .replace(/[\s-]/g, "")
+        .toUpperCase(),
+      id2 = (details.nationalId || "").replace(/[\s-]/g, "").toUpperCase();
+    if (id1 && id2) return id1 === id2;
+    return (
+      r.ownerKey === ownerKey(user) &&
+      cleanName(r.details.firstName) === cleanName(details.firstName) &&
+      cleanName(r.details.lastName) === cleanName(details.lastName) &&
+      (r.details.dob && details.dob
+        ? r.details.dob === details.dob
+        : String(r.details.age) === String(details.age) &&
+          r.details.gender === details.gender)
+    );
+  });
+function validateDetails(d, a, stage = "all") {
   const errors = {};
-  if (!d.firstName?.trim() || d.firstName.trim().length > 50)
+  if (
+    a.kind !== "camp" &&
+    (!d.firstName?.trim() || d.firstName.trim().length > 50)
+  )
     errors.firstName = "أدخل الاسم الأول (حتى 50 حرفًا).";
-  if (!d.lastName?.trim() || d.lastName.trim().length > 50)
+  if (
+    a.kind !== "camp" &&
+    (!d.lastName?.trim() || d.lastName.trim().length > 50)
+  )
     errors.lastName = "أدخل اسم العائلة (حتى 50 حرفًا).";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || ""))
     errors.email = "أدخل بريدًا إلكترونيًا صحيحًا.";
@@ -152,34 +210,107 @@ function validateDetails(d, a) {
   if (
     !Number.isInteger(Number(d.age)) ||
     !d.age ||
-    Number(d.age) < a.minAge ||
-    Number(d.age) > a.maxAge
+    (a.useAgeLimits && (Number(d.age) < a.minAge || Number(d.age) > a.maxAge))
   )
     errors.age = `العمر المسموح من ${a.minAge} إلى ${a.maxAge} سنة.`;
-  if (!d.address?.trim()) errors.address = "أدخل المدينة أو العنوان.";
+  if (a.kind !== "camp" && !d.address?.trim())
+    errors.address = "أدخل المدينة أو العنوان.";
   if (!["camper", "leader"].includes(d.registrationRole))
     errors.registrationRole = "اختر دور المشاركة.";
   const today = new Date().toISOString().slice(0, 10);
-  if (a.kind === "camp" && (a.dobMin || a.dobMax || d.dob)) {
+  if (a.kind === "camp") {
     if (!validDate(d.dob || "") || d.dob > today)
       errors.dob = "أدخل تاريخ ميلاد صحيحًا بصيغة YYYY-MM-DD.";
     else if ((a.dobMin && d.dob < a.dobMin) || (a.dobMax && d.dob > a.dobMax))
       errors.dob = "تاريخ الميلاد خارج النطاق المسموح لهذا المخيم.";
     else {
       const age = ageAt(d.dob, a.startDate || a.date || today);
-      if (age < a.minAge || age > a.maxAge || age !== Number(d.age))
+      if (
+        (a.useAgeLimits && (age < a.minAge || age > a.maxAge)) ||
+        age !== Number(d.age)
+      )
         errors.dob = "راجع العمر وتاريخ الميلاد وفق تاريخ بدء المخيم.";
     }
   }
+  if (a.kind === "camp") {
+    if ((d.arabicFullName || "").trim().split(/\s+/).length < 3)
+      errors.arabicFullName = "أدخل الاسم الثلاثي للمشارك.";
+    if ((d.englishFullName || "").trim().split(/\s+/).length < 2)
+      errors.englishFullName = "أدخل الاسم الكامل باللغة الإنجليزية.";
+    if (a.requireNationalId && !/^[A-Za-z0-9-]{4,30}$/.test(d.nationalId || ""))
+      errors.nationalId = "أدخل الرقم الوطني أو رقم الوثيقة الصحيح.";
+    if (
+      !a.gradeOptions.includes(d.grade) ||
+      (a.allowedGrades.length && !a.allowedGrades.includes(d.grade))
+    )
+      errors.grade = "اختر صف المشارك.";
+    if (stage !== "participant") {
+      if (!d.guardianName?.trim()) errors.guardianName = "أدخل اسم ولي الأمر.";
+      if (!/^\d{10}$/.test(d.guardianPhone || ""))
+        errors.guardianPhone = "أدخل رقم هاتف ولي الأمر من 10 أرقام.";
+      if (
+        !["الأب", "الأم", "الوصي", "قريب", "آخر"].includes(d.guardianPhoneOwner)
+      )
+        errors.guardianPhoneOwner = "اختر صاحب رقم الهاتف.";
+      if (
+        !d.city?.trim() ||
+        (a.cityOptions.length && !a.cityOptions.includes(d.city))
+      )
+        errors.city = "أدخل المدينة أو اخترها.";
+      if (
+        !d.school?.trim() ||
+        (a.schoolOptions.length && !a.schoolOptions.includes(d.school))
+      )
+        errors.school = "أدخل المدرسة أو اخترها.";
+      if (!a.shirtOptions.includes(d.shirtSize))
+        errors.shirtSize = "اختر مقاس التيشيرت.";
+      if (a.collectMedical && !d.medicalNotes?.trim())
+        errors.medicalNotes = "اذكر التوصيات الطبية، أو اكتب لا يوجد.";
+      if (a.collectMedical && !d.allergies?.trim())
+        errors.allergies = "اذكر الحساسية، أو اكتب لا يوجد.";
+      if (
+        (a.requireIdDocument || d.idDocument) &&
+        !validPreviewImage(d.idDocument)
+      )
+        errors.idDocument = "أرفق صورة هوية تجريبية صالحة.";
+    }
+  }
+  if (stage === "extra")
+    return Object.fromEntries(
+      Object.entries(errors).filter(([key]) =>
+        [
+          "guardianName",
+          "guardianPhone",
+          "guardianPhoneOwner",
+          "city",
+          "school",
+          "shirtSize",
+          "medicalNotes",
+          "allergies",
+          "idDocument",
+        ].includes(key),
+      ),
+    );
   return errors;
 }
 function submitRegistration(activity, user, details, records, consent) {
   const a = normalizeActivity(activity);
+  if (a.kind === "camp") {
+    const names = (details.arabicFullName || "").trim().split(/\s+/);
+    details = {
+      ...details,
+      firstName: names[0] || "",
+      lastName: names.slice(1).join(" "),
+    };
+  }
   if (!user) return { error: "سجّل الدخول أولًا." };
   if (!a.published || !a.registrationOpen || a.inactive)
     return { error: "التسجيل مغلق لهذا النشاط." };
-  if (activeRegistration(records, a.id, user))
-    return { error: "لديك طلب قائم لهذا النشاط." };
+  if (duplicateParticipant(records, a.id, user, details))
+    return {
+      error:
+        "لديك طلب قائم لهذا المشارك في هذا النشاط. يمكنك تسجيل مشارك آخر ببياناته.",
+    };
   if (Object.keys(validateDetails(details, a)).length)
     return { error: "راجع البيانات المطلوبة قبل الإرسال." };
   if (!consent) return { error: "الموافقة على تعليمات المشاركة مطلوبة." };
@@ -210,6 +341,11 @@ function submitRegistration(activity, user, details, records, consent) {
       activityId: a.id,
       activityTitle: a.title,
       ownerKey: ownerKey(user),
+      submittedBy: user.name,
+      campFormVersion: a.kind === "camp" ? 2 : null,
+      feeAmount: Number(a.fees || 0),
+      currency: a.currency,
+      receiptStatus: "notSubmitted",
       details: {
         ...details,
         tentNumber:
@@ -232,24 +368,26 @@ function changeRegistrationStatus(
   if (!current) return { error: "الطلب غير موجود." };
   if (
     !["Pending", "Waiting"].includes(current.status) ||
-    !["Confirmed", "Cancelled", "Rejected"].includes(status)
+    !["Pending", "Confirmed", "Cancelled", "Rejected"].includes(status)
   )
     return { error: "لا يمكن إجراء هذا التغيير على حالة الطلب." };
+  if (status === "Pending" && current.status !== "Waiting")
+    return { error: "يمكن نقل طلب الانتظار فقط إلى قيد المراجعة." };
   const a = activities.find((a) => a.id === current.activityId);
   if (
-    status === "Confirmed" &&
+    ["Confirmed", "Pending"].includes(status) &&
     (!a || available(normalizeActivity(a), records) === 0)
   )
     return { error: "لا توجد أماكن متاحة لتأكيد الطلب." };
   const updatedDetails = {
     ...current.details,
-    ...(status === "Confirmed" &&
+    ...(["Confirmed", "Pending"].includes(status) &&
     assignedTent !== undefined &&
     assignedTent !== ""
       ? { tentNumber: Number(assignedTent) }
       : {}),
   };
-  if (status === "Confirmed" && a) {
+  if (["Confirmed", "Pending"].includes(status) && a) {
     const normalized = normalizeActivity(a);
     const error = tentError(
       { ...normalized, registrationMode: "standard" },
@@ -269,6 +407,17 @@ function changeRegistrationStatus(
         error: "الخيمة ممتلئة. عدّل السعة أو انتظر توفر مكان قبل التأكيد.",
       };
   }
+  if (
+    status === "Confirmed" &&
+    current.campFormVersion === 2 &&
+    a?.requireReceipt &&
+    Number(current.feeAmount) > 0 &&
+    current.receiptStatus !== "accepted"
+  )
+    return {
+      error:
+        "راجع وصل الإيداع واقبله قبل تأكيد المشاركة، أو انقل المنتظر إلى قيد المراجعة لطلب الوصل.",
+    };
   return {
     records: records.map((r) =>
       r.id === id
@@ -298,6 +447,7 @@ module.exports = {
   ownerKey,
   available,
   activeRegistration,
+  duplicateParticipant,
   validateDetails,
   submitRegistration,
   changeRegistrationStatus,
@@ -305,6 +455,17 @@ module.exports = {
 
 module.exports.validateCampSettings = (activity, records) => {
   const a = normalizeActivity(activity);
+  if (
+    a.kind === "camp" &&
+    a.allowedGrades.some((g) => !a.gradeOptions.includes(g))
+  )
+    return "الصفوف المؤهلة يجب أن تطابق خيارات الصفوف المتاحة.";
+  if (
+    a.kind === "camp" &&
+    (!a.gradeOptions.filter(Boolean).length ||
+      !a.shirtOptions.filter(Boolean).length)
+  )
+    return "أضف خيارات الصفوف ومقاسات التيشيرت.";
   if (a.registrationMode === "waitingList" && !a.allowWaitlist)
     return "فعّل السماح بقائمة الانتظار عند اختيار وضع الانتظار.";
   if (!Number.isFinite(Number(a.fees)) || Number(a.fees) < 0)
@@ -343,4 +504,59 @@ module.exports.validateCampSettings = (activity, records) => {
     }
   }
   return null;
+};
+
+const validPreviewImage = (image) =>
+  !!image &&
+  /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(
+    image.uri || "",
+  ) &&
+  (image.uri || "").length < 700000;
+module.exports.validPreviewImage = validPreviewImage;
+module.exports.saveReceipt = (records, id, user, image, reference) => {
+  const r = records.find((r) => r.id === id && r.ownerKey === ownerKey(user));
+  if (!r || r.status !== "Pending")
+    return { error: "يمكن رفع الوصل لطلبك قيد المراجعة فقط." };
+  if (!validPreviewImage(image) || !reference?.trim() || reference.length > 100)
+    return { error: "أرفق صورة وصل صالحة ورقمًا مرجعيًا." };
+  return {
+    records: records.map((x) =>
+      x.id === id
+        ? {
+            ...x,
+            receipt: image,
+            receiptReference: reference.trim(),
+            receiptStatus: "pendingReview",
+            receiptNote: "",
+            receiptUploadedAt: new Date().toISOString(),
+          }
+        : x,
+    ),
+  };
+};
+module.exports.reviewReceipt = (records, id, decision, note = "") => {
+  const r = records.find((r) => r.id === id);
+  if (
+    !r ||
+    r.status !== "Pending" ||
+    !r.receipt ||
+    !["accepted", "rejected"].includes(decision)
+  )
+    return { error: "لا يوجد وصل متاح للمراجعة لهذا الطلب." };
+  return {
+    records: records.map((x) =>
+      x.id === id
+        ? {
+            ...x,
+            receiptStatus: decision,
+            receiptNote:
+              note ||
+              (decision === "rejected"
+                ? "يرجى إعادة رفع صورة واضحة مع الرقم المرجعي الصحيح."
+                : ""),
+            receiptReviewedAt: new Date().toISOString(),
+          }
+        : x,
+    ),
+  };
 };

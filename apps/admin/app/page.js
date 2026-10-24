@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
+  reviewReceipt,
   validateCampSettings,
   tentOccupancy,
   tentAvailable,
   eligibleTents,
   normalizeContent,
+  contentVersion,
   registrationKey,
   statuses,
   normalizeActivity,
@@ -68,7 +70,7 @@ export default function Dashboard() {
       if (c) {
         const n = normalizeContent(c);
         setContent(n);
-        if (c.schemaVersion !== 2)
+        if (c.schemaVersion !== contentVersion)
           localStorage.setItem(storageKey, JSON.stringify(n));
       }
     } catch {}
@@ -87,7 +89,7 @@ export default function Dashboard() {
         if (c) {
           const n = normalizeContent(c);
           setContent(n);
-          if (c.schemaVersion !== 2)
+          if (c.schemaVersion !== contentVersion)
             localStorage.setItem(storageKey, JSON.stringify(n));
         }
       } catch {}
@@ -131,6 +133,19 @@ export default function Dashboard() {
         "تحقق من السعة والأماكن المؤكدة والأعمار. لا يمكن خفض السعة عن عدد المؤكدين.",
       );
       return;
+    }
+    if (section === "activities") {
+      for (const key of [
+        "gradeOptions",
+        "cityOptions",
+        "schoolOptions",
+        "shirtOptions",
+        "allowedGrades",
+      ])
+        if (draft[key])
+          draft[key] = [
+            ...new Set(draft[key].map((v) => v.trim()).filter(Boolean)),
+          ];
     }
     if (section === "activities") {
       const error = validateCampSettings(draft, registrations);
@@ -208,6 +223,25 @@ export default function Dashboard() {
       setMessage("تم تحديث حالة الطلب في المعاينة.");
     } catch {
       setMessage("تعذّر تحديث حالة الطلب.");
+    }
+  };
+  const verifyReceipt = (id, decision) => {
+    try {
+      const latest = JSON.parse(localStorage.getItem(registrationKey)) || [];
+      const result = reviewReceipt(latest, id, decision);
+      if (result.error) {
+        setMessage(result.error);
+        return;
+      }
+      localStorage.setItem(registrationKey, JSON.stringify(result.records));
+      setRegistrations(result.records);
+      setMessage(
+        decision === "accepted"
+          ? "تم قبول الوصل. يمكنك الآن تأكيد الطلب."
+          : "تم طلب إعادة رفع الوصل.",
+      );
+    } catch {
+      setMessage("تعذّر حفظ مراجعة الوصل.");
     }
   };
   const uploadActivityImage = (e) => {
@@ -394,6 +428,7 @@ export default function Dashboard() {
                 <p>
                   {r.details.firstName} {r.details.lastName} · {r.reference}
                 </p>
+                {r.submittedBy && <p>مقدّم الطلب: {r.submittedBy}</p>}
                 <p>
                   {r.details.email} · {r.details.phone} · العمر: {r.details.age}
                 </p>
@@ -416,7 +451,80 @@ export default function Dashboard() {
                     العنوان: {r.details.address} · الجنس: {r.details.gender}
                   </p>
                   <p>الموافقة على التعليمات: {r.consentedAt}</p>
+                  {[
+                    ["الاسم العربي", r.details.arabicFullName],
+                    ["الاسم الإنجليزي", r.details.englishFullName],
+                    ["الميلاد", r.details.dob],
+                    ["الرقم الوطني", r.details.nationalId],
+                    ["الصف", r.details.grade],
+                    ["ولي الأمر", r.details.guardianName],
+                    ["هاتف ولي الأمر", r.details.guardianPhone],
+                    ["صاحب الهاتف", r.details.guardianPhoneOwner],
+                    ["المدينة", r.details.city],
+                    ["المدرسة", r.details.school],
+                    ["مقاس التيشيرت", r.details.shirtSize],
+                    ["التوصيات الطبية", r.details.medicalNotes],
+                    ["الحساسية", r.details.allergies],
+                  ]
+                    .filter(([, v]) => v)
+                    .map(([label, value]) => (
+                      <p key={label}>
+                        {label}: {value}
+                      </p>
+                    ))}
+                  {r.details.idDocument?.uri && (
+                    <img
+                      src={r.details.idDocument.uri}
+                      alt="وثيقة المشارك التجريبية"
+                      style={{
+                        maxWidth: 220,
+                        maxHeight: 180,
+                        objectFit: "contain",
+                      }}
+                    />
+                  )}
                 </details>
+                {r.receipt && (
+                  <section className="receiptReview">
+                    <h3>
+                      وصل الإيداع ·{" "}
+                      {r.receiptStatus === "accepted"
+                        ? "مقبول"
+                        : r.receiptStatus === "rejected"
+                          ? "مطلوب تصحيحه"
+                          : "بانتظار المراجعة"}
+                    </h3>
+                    <p>
+                      المرجع: {r.receiptReference} · المبلغ: {r.feeAmount}{" "}
+                      {r.currency}
+                    </p>
+                    <img
+                      src={r.receipt.uri}
+                      alt="وصل الإيداع التجريبي"
+                      style={{
+                        maxWidth: 240,
+                        maxHeight: 200,
+                        objectFit: "contain",
+                      }}
+                    />
+                    {r.status === "Pending" && (
+                      <div className="actions">
+                        <button
+                          className="plain"
+                          onClick={() => verifyReceipt(r.id, "accepted")}
+                        >
+                          قبول وصل الإيداع
+                        </button>
+                        <button
+                          className="danger"
+                          onClick={() => verifyReceipt(r.id, "rejected")}
+                        >
+                          طلب تصحيح الوصل
+                        </button>
+                      </div>
+                    )}
+                  </section>
+                )}
                 {["Pending", "Waiting"].includes(r.status) && (
                   <div className="actions">
                     {r.status === "Waiting" &&
@@ -478,9 +586,31 @@ export default function Dashboard() {
                       )}
                     <button
                       className="primary"
-                      onClick={() => review(r.id, "Confirmed")}
+                      onClick={() =>
+                        review(
+                          r.id,
+                          r.status === "Waiting" &&
+                            r.campFormVersion === 2 &&
+                            r.feeAmount > 0 &&
+                            normalizeActivity(
+                              content.activities.find(
+                                (a) => a.id === r.activityId,
+                              ) || {},
+                            ).requireReceipt
+                            ? "Pending"
+                            : "Confirmed",
+                        )
+                      }
                     >
-                      تأكيد الطلب
+                      {r.status === "Waiting" &&
+                      r.campFormVersion === 2 &&
+                      r.feeAmount > 0 &&
+                      normalizeActivity(
+                        content.activities.find((a) => a.id === r.activityId) ||
+                          {},
+                      ).requireReceipt
+                        ? "تخصيص المقعد وطلب الدفع"
+                        : "تأكيد الطلب"}
                     </button>
                     <button
                       className="danger"
@@ -729,6 +859,72 @@ export default function Dashboard() {
                     {draft.kind === "camp" && (
                       <fieldset className="campSettings">
                         <legend>إعدادات المخيم والخيام</legend>
+                        <label>
+                          كلمة هوية المخيم بالإنجليزية
+                          <input
+                            maxLength={12}
+                            value={draft.brandTitle || ""}
+                            onChange={(e) =>
+                              change("brandTitle", e.target.value.toUpperCase())
+                            }
+                          />
+                        </label>
+                        <label>
+                          لون هوية المخيم
+                          <input
+                            type="color"
+                            value={draft.brandColor || "#5149ae"}
+                            onChange={(e) =>
+                              change("brandColor", e.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          وصف الصفوف على البطاقة
+                          <input
+                            value={draft.gradeLabel || ""}
+                            maxLength={100}
+                            onChange={(e) =>
+                              change("gradeLabel", e.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          وصف مواليد المخيم
+                          <input
+                            value={draft.birthYearLabel || ""}
+                            maxLength={100}
+                            onChange={(e) =>
+                              change("birthYearLabel", e.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          الصفوف المؤهلة
+                          <textarea
+                            value={(draft.allowedGrades || []).join("\n")}
+                            onChange={(e) =>
+                              change(
+                                "allowedGrades",
+                                e.target.value.split("\n"),
+                              )
+                            }
+                          />
+                          <small>
+                            خيار في كل سطر، ويجب أن يطابق اسم الصف. اتركه فارغًا
+                            لإتاحة جميع الصفوف.
+                          </small>
+                        </label>
+                        <label className="checkbox">
+                          <input
+                            type="checkbox"
+                            checked={draft.useAgeLimits ?? true}
+                            onChange={(e) =>
+                              change("useAgeLimits", e.target.checked)
+                            }
+                          />{" "}
+                          تطبيق حدود العمر إضافةً إلى شروط الصف والميلاد
+                        </label>
                         {[
                           ["visitorsDate", "يوم الزيارة"],
                           ["dobMin", "أقدم تاريخ ميلاد مسموح"],
@@ -755,6 +951,46 @@ export default function Dashboard() {
                               onChange={(e) => change(key, e.target.checked)}
                             />
                             {label}
+                          </label>
+                        ))}
+                        {[
+                          ["requireNationalId", "طلب الرقم الوطني"],
+                          ["requireIdDocument", "طلب صورة الهوية"],
+                          ["collectMedical", "جمع التوصيات الطبية والحساسية"],
+                          [
+                            "requireReceipt",
+                            "اشتراط قبول وصل الإيداع قبل تأكيد الطلب المدفوع",
+                          ],
+                        ].map(([key, label]) => (
+                          <label key={key} className="checkbox">
+                            <input
+                              type="checkbox"
+                              checked={draft[key] ?? true}
+                              onChange={(e) => change(key, e.target.checked)}
+                            />
+                            {label}
+                          </label>
+                        ))}
+                        {[
+                          ["gradeOptions", "خيارات الصفوف"],
+                          ["cityOptions", "خيارات المدن"],
+                          ["schoolOptions", "خيارات المدارس"],
+                          ["shirtOptions", "مقاسات التيشيرت"],
+                        ].map(([key, label]) => (
+                          <label key={key}>
+                            {label}
+                            <textarea
+                              value={(
+                                draft[key] ?? normalizeActivity(draft)[key]
+                              ).join("\n")}
+                              onChange={(e) =>
+                                change(key, e.target.value.split("\n"))
+                              }
+                            />
+                            <small>
+                              خيار واحد في كل سطر. اترك المدن أو المدارس فارغة
+                              للسماح بالكتابة الحرة.
+                            </small>
                           </label>
                         ))}
                         {draft.tentsEnabled && (

@@ -15,8 +15,8 @@ Use the existing checkout; a separate worktree is unnecessary.
 ## Next implementation milestones
 
 1. Database and authenticated Youth / Leader / Admin permissions enforced by the backend.
-2. Arabic registration wizard with validation, consent, transactional capacity allocation on approval, duplicate prevention and waitlist policy.
-3. Admin program and registration management with audit records.
+2. Shared backend persistence and transactional camper/tent/receipt/approval rules for the implemented Arabic registration UI.
+3. Authenticated admin access and server-side audit records for program and registration management.
 4. Learning, moderated wall, notifications and QR/bus attendance.
 5. Adalo migration planning, privacy/guardian requirements, device testing and store delivery.
 
@@ -46,7 +46,7 @@ Mobile uses bundled Tajawal Arabic fonts, Ionicons navigation, Spark yellow/blac
 
 The five mobile tabs are Home, Activities, Learn, Ranking and Account. Learning is labelled «تعلّم» with «مسارات التعلّم» inside the section. Activities have camp/trip/event filters plus My registrations. Admin manages activity type, age limits, capacity, external confirmed places, availability, waitlists and participation instructions.
 
-Registration collects participant details, an application role (camper or prospective leader), optional meal/transport requests, review and consent. Standard camp requests become Pending while capacity is available; a camp waiting list must be explicitly opened by admin. Non-camp requests become Pending when capacity is available, otherwise Waiting if enabled. Pending does not reserve a place; admin approval consumes capacity. Duplicate active requests are blocked, and only Pending/Waiting requests can be cancelled. Leader applications do not grant account permissions. No email, payment, real booking or check-in is performed.
+Registration collects participant details, an application role (camper or prospective leader), optional meal/transport requests, review and consent. Standard camp requests become Pending while capacity is available; a camp waiting list must be explicitly opened by admin. Non-camp requests become Pending when capacity is available, otherwise Waiting if enabled. Pending does not reserve a place; admin approval consumes capacity. Duplicate active requests for the same participant are blocked; accounts can submit separate requests for multiple campers, and only Pending/Waiting requests can be cancelled. Leader applications do not grant account permissions. No email, payment, real booking or check-in is performed.
 
 Registrations are local preview records under `spark-event-registrations-v1`. Demo ownership uses the entered demo name, not an authenticated identity. Do not enter actual sensitive participant data. Browser-local validation is not transactional backend protection; secure authentication, persistent shared storage and server-side approval/capacity rules remain required. Native preview records currently remain in memory.
 
@@ -67,3 +67,17 @@ An older `preparing` display setting is recognized as inactive. Legacy app-versi
 `npm run test:tents` runs reservation rules plus a browser flow. Set CHROMIUM_PATH and SPARK_TEST_URL as with the other preview tests. It covers tent 0, gender changes, DOB validation, live capacities, virtual waiting-only registration and staff tent assignment.
 
 Requested Facebook photos from https://www.facebook.com/GileadCamp have not been imported: the execution proxy blocked the request. Network additions for facebook.com and www.facebook.com were saved to the environment draft, but saving does not apply them. Existing app images remain clearly identified sample assets until original photos are provided or access is enabled.
+
+## Multiple camper registrations
+
+One demo account can submit and manage multiple independent participants for the same camp/event. Each request records the submitter, camper name/details, consent, status and individual tent selection. Shared contact email/phone do not block siblings or friends. Active duplicates within the account are checked by normalized participant name plus DOB when both requests provide one, otherwise name/age/gender; this is a preview heuristic, not verified identity. Fields will be adjusted to the supplied legacy registration form.
+
+The exact Facebook album URL https://www.facebook.com/media/set/?set=a.10153833663906742&type=3 became reachable, but its initial HTML did not expose album photo files. The automated browser encountered a CA trust error; TLS verification was not disabled. No actual Facebook photos have been imported. Original JPG/PNG files or a ZIP are still needed to add the real photographs reliably.
+
+## Legacy camp form and branded templates
+
+See [the field-by-field comparison](docs/registration-comparison.md) for the fields and workflow adapted from the supplied screenshots. New camps collect camper/guardian/school/medical details, ID images and separate payment receipts per camper; paid requests require accepted receipts before confirmation. One account can manage several campers. Confirmed requests have a clearly marked QR preview.
+
+Six editable Spark camp templates use school-grade groups and birth-year restrictions from the reference branding. They start inactive with no dates; the past 2026 poster dates are not reused as upcoming events. Content version 3 preserves existing edits and adds templates once. Real Facebook photos still have not been imported; original image files remain needed.
+
+Run `npm run test:family` for the complete multi-camper/receipt browser workflow (set CHROMIUM_PATH and SPARK_TEST_URL), and `npm run test:branding` for eligibility/template migration checks. Native photo selection uses Expo Image Picker; camera and microphone permissions are disabled because the flow only selects existing images. Native distribution still needs signing/accounts and device QA.

@@ -95,7 +95,8 @@ exports.sampleProgress = [
 ];
 
 Object.assign(exports, require("./registrations"));
-exports.defaultContent.schemaVersion = 2;
+exports.contentVersion = 3;
+exports.defaultContent.schemaVersion = exports.contentVersion;
 Object.assign(exports.defaultContent.activities[0], {
   kind: "event",
   capacity: 40,
@@ -139,6 +140,90 @@ exports.defaultContent.activities.push(
     published: true,
   },
 );
+exports.campTemplates = [
+  {
+    id: "spark-kids",
+    title: "سبارك الصغار",
+    brandTitle: "KIDS",
+    brandColor: "#5149ae",
+    gradeLabel: "الصفوف 3–5",
+    allowedGrades: ["الثالث", "الرابع", "الخامس"],
+  },
+  {
+    id: "spark-explorers",
+    title: "سبارك المستكشفين",
+    brandTitle: "EXPLORE",
+    brandColor: "#6560b9",
+    gradeLabel: "الصفان 6–7",
+    allowedGrades: ["السادس", "السابع"],
+  },
+  {
+    id: "spark-youth",
+    title: "سبارك الشباب",
+    brandTitle: "YOUTH",
+    brandColor: "#863b43",
+    gradeLabel: "الصفان 8–9",
+    allowedGrades: ["الثامن", "التاسع"],
+  },
+  {
+    id: "spark-youth-plus",
+    title: "سبارك التحدّي",
+    brandTitle: "CHALLENGE",
+    brandColor: "#71313a",
+    gradeLabel: "الصفان 10–11",
+    allowedGrades: ["العاشر", "الحادي عشر"],
+  },
+  {
+    id: "spark-seniors",
+    title: "سبارك القادة",
+    brandTitle: "LEAD",
+    brandColor: "#632a36",
+    gradeLabel: "الصف 12 وما بعده",
+    allowedGrades: ["الثاني عشر", "الثاني عشر+", "جامعي"],
+    dobMin: "2008-01-01",
+    dobMax: "2009-12-31",
+    birthYearLabel: "مواليد 2008–2009",
+  },
+  {
+    id: "spark-sport",
+    title: "سبارك الرياضي",
+    brandTitle: "SPORT",
+    brandColor: "#08683d",
+    gradeLabel: "الصفوف 9–12+",
+    allowedGrades: [
+      "التاسع",
+      "العاشر",
+      "الحادي عشر",
+      "الثاني عشر",
+      "الثاني عشر+",
+      "جامعي",
+    ],
+    dobMin: "2008-01-01",
+    dobMax: "2012-12-31",
+    birthYearLabel: "مواليد 2008–2012",
+  },
+].map((a) => ({
+  ...a,
+  text: "ألعاب وتحديات ومغامرات نصنع فيها صداقات وذكريات جديدة. المواعيد والتفاصيل النهائية تحددها الإدارة.",
+  kind: "camp",
+  image: a.id === "spark-sport" ? "/media/trail.png" : "/media/camp.png",
+  published: true,
+  inactive: true,
+  registrationMode: "closed",
+  useAgeLimits: false,
+  capacity: 140,
+  seatsTaken: 0,
+  minAge: 1,
+  maxAge: 99,
+  date: "",
+  startDate: "",
+  endDate: "",
+  location: "تحدده الإدارة",
+  tentsEnabled: true,
+  fees: 0,
+  allowWaitlist: true,
+}));
+exports.defaultContent.activities.push(...exports.campTemplates);
 exports.normalizeContent = (value) => {
   const c = { ...exports.defaultContent, ...value };
   let activities = c.activities || [];
@@ -149,10 +234,22 @@ exports.normalizeContent = (value) => {
         (a) => a.id !== "e1" && !activities.some((x) => x.id === a.id),
       ),
     ];
+  if ((value?.schemaVersion || 0) < 3)
+    activities = [
+      ...activities,
+      ...exports.campTemplates.filter(
+        (a) => !activities.some((x) => x.id === a.id),
+      ),
+    ];
   return {
     ...c,
-    schemaVersion: 2,
+    schemaVersion: exports.contentVersion,
     activities: activities.map(exports.normalizeActivity),
   };
 };
-exports.ar.learning = "تعلّم";
+
+exports.displayRange = (text) =>
+  (text || "").replace(
+    /\d+(?:[–-]\d+)?\+?/g,
+    (value) => "\u2066" + value + "\u2069",
+  );

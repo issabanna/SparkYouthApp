@@ -11,8 +11,13 @@ import {
   Platform,
   StyleSheet,
 } from "react-native";
+import CampPoster from "./CampPoster";
+import QRCode from "react-native-qrcode-svg";
+import { CampIdentity, CampExtra, pickPreviewImage } from "./CampFields";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
+  displayRange,
+  saveReceipt,
   tentError,
   tentAvailable,
   eligibleTents,
@@ -79,6 +84,19 @@ const blank = (user) => ({
   transport: false,
   tentNumber: "",
   dob: "",
+  arabicFullName: "",
+  englishFullName: "",
+  nationalId: "",
+  grade: "",
+  guardianName: "",
+  guardianPhone: "",
+  guardianPhoneOwner: "",
+  city: "",
+  school: "",
+  shirtSize: "",
+  medicalNotes: "",
+  allergies: "",
+  idDocument: null,
 });
 export default function Registrations({ content, user, onDone }) {
   const [records, setRecords] = useState(read),
@@ -90,7 +108,11 @@ export default function Registrations({ content, user, onDone }) {
     [errors, setErrors] = useState({}),
     [message, setMessage] = useState(""),
     [cancelId, setCancelId] = useState(null),
-    [success, setSuccess] = useState(null);
+    [success, setSuccess] = useState(null),
+    [receiptId, setReceiptId] = useState(null),
+    [receiptImage, setReceiptImage] = useState(null),
+    [receiptReference, setReceiptReference] = useState(""),
+    [ticketId, setTicketId] = useState(null);
   useEffect(() => {
     if (Platform.OS !== "web") return;
     const refresh = () => setRecords(read());
@@ -103,7 +125,30 @@ export default function Registrations({ content, user, onDone }) {
   }, []);
   const activities = content.activities.map(normalizeActivity),
     activity = activities.find((a) => a.id === activityId);
+  const isCamp = activity?.kind === "camp",
+    servicesStep = isCamp ? 2 : 1,
+    reviewIndex = isCamp ? 3 : 2,
+    successStep = isCamp ? 4 : 3;
   const ownRecords = records.filter((r) => r.ownerKey === ownerKey(user));
+  const registrationGroup = (r) =>
+    r.status === "Confirmed"
+      ? "التسجيلات المؤكدة"
+      : ["Pending", "Waiting"].includes(r.status)
+        ? "بانتظار الدفع أو التأكيد"
+        : "الطلبات الملغاة أو المرفوضة";
+  const groupedRecords = [...ownRecords].sort(
+    (a, b) =>
+      (a.status === "Confirmed"
+        ? 0
+        : ["Pending", "Waiting"].includes(a.status)
+          ? 1
+          : 2) -
+      (b.status === "Confirmed"
+        ? 0
+        : ["Pending", "Waiting"].includes(b.status)
+          ? 1
+          : 2),
+  );
   const persist = (next) => {
     try {
       if (Platform.OS === "web")
@@ -119,7 +164,12 @@ export default function Registrations({ content, user, onDone }) {
   const open = (a) => {
     setActivityId(a.id);
     setStep(0);
-    setDetails(blank(user));
+    setDetails({
+      ...blank(user),
+      ...(ownRecords.some((r) => r.activityId === a.id)
+        ? { firstName: "", lastName: "" }
+        : {}),
+    });
     setConsent(false);
     setErrors({});
     setMessage("");
@@ -129,6 +179,13 @@ export default function Registrations({ content, user, onDone }) {
     setDetails((current) => ({
       ...current,
       [key]: value,
+      ...(key === "arabicFullName"
+        ? {
+            firstName: value.trim().split(/\s+/)[0] || "",
+            lastName: value.trim().split(/\s+/).slice(1).join(" "),
+          }
+        : {}),
+      ...(key === "city" ? { address: value } : {}),
       ...(key === "gender" ? { tentNumber: "" } : {}),
       ...(key === "dob" &&
       ageAt(
@@ -176,10 +233,10 @@ export default function Registrations({ content, user, onDone }) {
       return;
     }
     setErrors({});
-    setStep(2);
+    setStep(reviewIndex);
   };
   const next = () => {
-    const e = validateDetails(details, activity);
+    const e = validateDetails(details, activity, "participant");
     setErrors(e);
     if (!Object.keys(e).length) setStep(1);
   };
@@ -192,7 +249,46 @@ export default function Registrations({ content, user, onDone }) {
     }
     if (persist([...latest, result.record])) {
       setSuccess(result.record);
-      setStep(3);
+      setStep(successStep);
+    }
+  };
+  const nextCampExtra = () => {
+    const e = validateDetails(details, activity, "extra");
+    setErrors(e);
+    if (!Object.keys(e).length) setStep(servicesStep);
+  };
+  const chooseId = async () => {
+    try {
+      const image = await pickPreviewImage();
+      if (image) update("idDocument", image);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  const uploadReceipt = () => {
+    const latest = Platform.OS === "web" ? read() : records;
+    const result = saveReceipt(
+      latest,
+      receiptId,
+      user,
+      receiptImage,
+      receiptReference,
+    );
+    if (result.error) {
+      setMessage(result.error);
+      return;
+    }
+    if (persist(result.records)) {
+      setReceiptId(null);
+      setMessage("تم حفظ الوصل. بانتظار مراجعة الإدارة في المعاينة.");
+    }
+  };
+  const chooseReceipt = async () => {
+    try {
+      const image = await pickPreviewImage();
+      if (image) setReceiptImage(image);
+    } catch (error) {
+      setMessage(error.message);
     }
   };
   const cancel = () => {
@@ -257,51 +353,100 @@ export default function Registrations({ content, user, onDone }) {
       )}
       {filter === "mine" ? (
         <>
-          {ownRecords.map((r) => (
-            <View key={r.id} style={s.registration}>
-              <View style={s.status}>
-                <Ionicons
-                  name={
-                    r.status === "Confirmed"
-                      ? "checkmark-circle-outline"
-                      : "time-outline"
-                  }
-                  size={18}
-                />
-                <Text>{statuses[r.status]}</Text>
-              </View>
-              <Text style={s.title}>{r.activityTitle}</Text>
-              <Text style={s.body}>رقم الطلب: {r.reference}</Text>
-              {r.details.tentNumber != null && (
+          {groupedRecords.map((r, index) => (
+            <React.Fragment key={r.id}>
+              {(index === 0 ||
+                registrationGroup(groupedRecords[index - 1]) !==
+                  registrationGroup(r)) && (
+                <Text style={s.groupHeading}>{registrationGroup(r)}</Text>
+              )}
+              <View key={r.id} style={s.registration}>
+                <View style={s.status}>
+                  <Ionicons
+                    name={
+                      r.status === "Confirmed"
+                        ? "checkmark-circle-outline"
+                        : "time-outline"
+                    }
+                    size={18}
+                  />
+                  <Text>{statuses[r.status]}</Text>
+                </View>
+                <Text style={s.title}>{r.activityTitle}</Text>
+                <Text style={s.participantName}>
+                  {r.details.firstName} {r.details.lastName}
+                </Text>
+                <Text style={s.body}>رقم الطلب: {r.reference}</Text>
+                {r.details.tentNumber != null && (
+                  <Text style={s.body}>
+                    الخيمة {r.details.tentNumber}
+                    {r.status === "Waiting" ? " · تفضيل غير محجوز" : ""}
+                  </Text>
+                )}
+                {!!activities.find((a) => a.id === r.activityId)
+                  ?.afterRegistrationInstructions && (
+                  <Text style={s.info}>
+                    {
+                      activities.find((a) => a.id === r.activityId)
+                        .afterRegistrationInstructions
+                    }
+                  </Text>
+                )}
                 <Text style={s.body}>
-                  الخيمة {r.details.tentNumber}
-                  {r.status === "Waiting" ? " · تفضيل غير محجوز" : ""}
+                  {r.status === "Pending"
+                    ? "طلبك بانتظار مراجعة الإدارة؛ لا يعني تأكيد المشاركة."
+                    : r.status === "Waiting"
+                      ? "سننتظر توفر مكان وموافقة الإدارة."
+                      : r.status === "Confirmed"
+                        ? "تمت الموافقة على طلبك في المعاينة."
+                        : ""}
                 </Text>
-              )}
-              {!!activities.find((a) => a.id === r.activityId)
-                ?.afterRegistrationInstructions && (
-                <Text style={s.info}>
-                  {
-                    activities.find((a) => a.id === r.activityId)
-                      .afterRegistrationInstructions
-                  }
-                </Text>
-              )}
-              <Text style={s.body}>
-                {r.status === "Pending"
-                  ? "طلبك بانتظار مراجعة الإدارة؛ لا يعني تأكيد المشاركة."
-                  : r.status === "Waiting"
-                    ? "سننتظر توفر مكان وموافقة الإدارة."
-                    : r.status === "Confirmed"
-                      ? "تمت الموافقة على طلبك في المعاينة."
-                      : ""}
-              </Text>
-              {["Pending", "Waiting"].includes(r.status) && (
-                <Action secondary onPress={() => setCancelId(r.id)}>
-                  إلغاء الطلب
-                </Action>
-              )}
-            </View>
+                {!!r.feeAmount && (
+                  <Text style={s.body}>
+                    المبلغ المطلوب: {r.feeAmount} {r.currency}
+                  </Text>
+                )}
+                {r.status === "Pending" && (r.feeAmount > 0 || r.receipt) && (
+                  <>
+                    <Text style={s.meta}>
+                      {r.receiptStatus === "accepted"
+                        ? "تم قبول الوصل · بانتظار تأكيد التسجيل"
+                        : r.receiptStatus === "pendingReview"
+                          ? "تم تحميل الوصل · بانتظار التحقق"
+                          : r.receiptStatus === "rejected"
+                            ? "الوصل يحتاج تصحيحًا"
+                            : "بانتظار تحميل وصل الإيداع"}
+                    </Text>
+                    {!!r.receiptNote && (
+                      <Text style={s.info}>{r.receiptNote}</Text>
+                    )}
+                    <Action
+                      secondary
+                      onPress={() => {
+                        setReceiptId(r.id);
+                        setReceiptImage(null);
+                        setReceiptReference(r.receiptReference || "");
+                        setMessage("");
+                      }}
+                    >
+                      {r.receipt
+                        ? "إعادة تحميل وصل الإيداع"
+                        : "تحميل وصل الإيداع"}
+                    </Action>
+                  </>
+                )}
+                {r.status === "Confirmed" && (
+                  <Action onPress={() => setTicketId(r.id)}>
+                    عرض بطاقة المشاركة وQR
+                  </Action>
+                )}
+                {["Pending", "Waiting"].includes(r.status) && (
+                  <Action secondary onPress={() => setCancelId(r.id)}>
+                    إلغاء الطلب
+                  </Action>
+                )}
+              </View>
+            </React.Fragment>
           ))}
           {!ownRecords.length && (
             <Text style={s.info}>لم تقدّم أي طلب تسجيل بعد.</Text>
@@ -318,24 +463,30 @@ export default function Registrations({ content, user, onDone }) {
                 slots = available(a, records);
               return (
                 <View key={a.id} style={s.card}>
-                  <Image source={{ uri: uri(a.image) }} style={s.photo} />
+                  {a.kind === "camp" && a.brandTitle ? (
+                    <CampPoster activity={a} logo={content.branding?.logo} />
+                  ) : (
+                    <Image source={{ uri: uri(a.image) }} style={s.photo} />
+                  )}
                   <View style={s.cardBody}>
                     <View style={s.cardTop}>
                       <Text style={s.kind}>{kinds[a.kind]}</Text>
                       <Text style={s.slot}>
-                        {a.registrationMode === "waitingList"
-                          ? "قائمة انتظار فقط"
-                          : slots
-                            ? `${slots} مكانًا متاحًا`
-                            : a.allowWaitlist
-                              ? "قائمة انتظار"
-                              : "مكتمل العدد"}
+                        {a.inactive || !a.registrationOpen
+                          ? `السعة: ${a.capacity}`
+                          : a.registrationMode === "waitingList"
+                            ? "قائمة انتظار فقط"
+                            : slots
+                              ? `${slots} مكانًا متاحًا`
+                              : a.allowWaitlist
+                                ? "قائمة انتظار"
+                                : "مكتمل العدد"}
                       </Text>
                     </View>
                     <Text style={s.title}>{a.title}</Text>
                     <Text style={s.body}>{a.text}</Text>
                     <Text style={s.body}>
-                      {a.date || "الموعد يُعلن قريبًا"} · {a.location}
+                      {a.date || "الموعد غير محدد"} · {a.location}
                     </Text>
                     <Text style={s.meta}>
                       الرسوم:{" "}
@@ -349,15 +500,16 @@ export default function Registrations({ content, user, onDone }) {
                         {a.endDate ? ` · النهاية: ${a.endDate}` : ""}
                       </Text>
                     )}
-                    <Text style={s.meta}>
-                      العمر: {a.minAge}–{a.maxAge} سنة
-                    </Text>
+                    {a.gradeLabel && (
+                      <Text style={s.meta}>{displayRange(a.gradeLabel)}</Text>
+                    )}
+                    {a.useAgeLimits && (
+                      <Text style={s.meta}>
+                        العمر: {a.minAge}–{a.maxAge} سنة
+                      </Text>
+                    )}
                     {a.inactive ? (
                       <Action disabled>غير فعّال</Action>
-                    ) : registration ? (
-                      <Action secondary onPress={() => setFilter("mine")}>
-                        {statuses[registration.status]} · عرض طلبي
-                      </Action>
                     ) : (
                       <Action
                         disabled={
@@ -370,11 +522,20 @@ export default function Registrations({ content, user, onDone }) {
                       >
                         {!a.registrationOpen
                           ? "غير فعّال"
-                          : a.registrationMode === "waitingList"
-                            ? "سجّل في قائمة الانتظار"
-                            : slots
-                              ? "سجّل الآن ←"
-                              : "انضم إلى قائمة الانتظار"}
+                          : registration &&
+                              slots > 0 &&
+                              a.registrationMode !== "waitingList"
+                            ? "سجّل مشاركًا آخر ←"
+                            : a.registrationMode === "waitingList"
+                              ? "سجّل في قائمة الانتظار"
+                              : slots
+                                ? "سجّل الآن ←"
+                                : "انضم إلى قائمة الانتظار"}
+                      </Action>
+                    )}
+                    {registration && !a.inactive && a.registrationOpen && (
+                      <Action secondary onPress={() => setFilter("mine")}>
+                        عرض تسجيلاتي لهذا النشاط
                       </Action>
                     )}
                   </View>
@@ -390,7 +551,7 @@ export default function Registrations({ content, user, onDone }) {
       <Modal
         visible={!!activity}
         onRequestClose={() =>
-          step === 3 ? setActivityId(null) : setCancelId("draft")
+          step === successStep ? setActivityId(null) : setCancelId("draft")
         }
         animationType="slide"
       >
@@ -402,13 +563,17 @@ export default function Registrations({ content, user, onDone }) {
                   <Action
                     secondary
                     onPress={() =>
-                      step === 3 ? setActivityId(null) : setCancelId("draft")
+                      step === successStep
+                        ? setActivityId(null)
+                        : setCancelId("draft")
                     }
                   >
                     إغلاق ×
                   </Action>
                   <Text style={s.kind}>
-                    {step === 3 ? "تم إرسال الطلب" : `الخطوة ${step + 1} من 3`}
+                    {step === successStep
+                      ? "تم إرسال الطلب"
+                      : `الخطوة ${step + 1} من ${successStep}`}
                   </Text>
                 </View>
                 <Text style={s.heading}>{activity.title}</Text>
@@ -438,7 +603,7 @@ export default function Registrations({ content, user, onDone }) {
                   </>
                 )}
                 <View style={s.progress}>
-                  {[0, 1, 2].map((i) => (
+                  {Array.from({ length: successStep }, (_, i) => i).map((i) => (
                     <View
                       key={i}
                       style={[s.progressPart, i <= step && s.progressActive]}
@@ -448,12 +613,28 @@ export default function Registrations({ content, user, onDone }) {
                 {step === 0 && (
                   <>
                     <Text style={s.title}>بيانات المشارك</Text>
-                    <Text style={s.meta}>
-                      العمر المسموح {activity.minAge}–{activity.maxAge} سنة. طلب
-                      المرشد يحتاج موافقة مستقلة ولا يمنح صلاحيات.
+                    <Text style={s.info}>
+                      اكتب بيانات الشخص الذي سيشارك في المخيم أو النشاط، وليس
+                      بيانات مقدّم الطلب. يمكنك تسجيل أكثر من مشارك من الحساب
+                      نفسه؛ لكل شخص طلب وخيمة وحالة مستقلة.
                     </Text>
-                    {field("firstName", "الاسم الأول", { maxLength: 50 })}
-                    {field("lastName", "اسم العائلة", { maxLength: 50 })}
+                    <Text style={s.meta}>
+                      {activity.useAgeLimits
+                        ? `العمر المسموح ${activity.minAge}–${activity.maxAge} سنة. `
+                        : ""}
+                      {displayRange(activity.gradeLabel)} طلب المرشد يحتاج
+                      موافقة مستقلة ولا يمنح صلاحيات.
+                    </Text>
+                    {isCamp ? (
+                      <CampIdentity
+                        {...{ activity, details, update, errors, field }}
+                      />
+                    ) : (
+                      <>
+                        {field("firstName", "الاسم الأول", { maxLength: 50 })}
+                        {field("lastName", "اسم العائلة", { maxLength: 50 })}
+                      </>
+                    )}
                     {field("email", "البريد الإلكتروني", {
                       keyboardType: "email-address",
                       autoCapitalize: "none",
@@ -465,11 +646,10 @@ export default function Registrations({ content, user, onDone }) {
                     })}
                     {activity.kind === "camp" && (
                       <>
-                        {field(
-                          "dob",
-                          `تاريخ الميلاد${activity.dobMin || activity.dobMax ? " (مطلوب)" : " (اختياري)"}`,
-                          { placeholder: "YYYY-MM-DD", maxLength: 10 },
-                        )}
+                        {field("dob", "تاريخ الميلاد (مطلوب)", {
+                          placeholder: "YYYY-MM-DD",
+                          maxLength: 10,
+                        })}
                         {(activity.dobMin || activity.dobMax) && (
                           <Text style={s.meta}>
                             الميلاد المسموح: {activity.dobMin || "غير محدد"} —{" "}
@@ -505,7 +685,10 @@ export default function Registrations({ content, user, onDone }) {
                       keyboardType: "phone-pad",
                       maxLength: 10,
                     })}
-                    {field("address", "المدينة أو العنوان", { maxLength: 200 })}
+                    {!isCamp &&
+                      field("address", "المدينة أو العنوان", {
+                        maxLength: 200,
+                      })}
                     <Text style={s.label}>دور المشاركة</Text>
                     <View style={s.choices}>
                       {[
@@ -525,10 +708,28 @@ export default function Registrations({ content, user, onDone }) {
                         </Pressable>
                       ))}
                     </View>
-                    <Action onPress={next}>التالي: الخدمات الاختيارية</Action>
+                    <Action onPress={next}>
+                      {isCamp
+                        ? "التالي: ولي الأمر والمعلومات الأخرى"
+                        : "التالي: الخدمات الاختيارية"}
+                    </Action>
                   </>
                 )}
-                {step === 1 && (
+                {isCamp && step === 1 && (
+                  <>
+                    <CampExtra
+                      {...{ activity, details, update, errors, field }}
+                      onImage={chooseId}
+                    />
+                    <Action onPress={nextCampExtra}>
+                      التالي: الخيمة والخدمات
+                    </Action>
+                    <Action secondary onPress={() => setStep(0)}>
+                      السابق
+                    </Action>
+                  </>
+                )}
+                {step === servicesStep && (
                   <>
                     {activity.registrationMode === "waitingList" ? (
                       <>
@@ -667,16 +868,45 @@ export default function Registrations({ content, user, onDone }) {
                       </Pressable>
                     ))}
                     <Action onPress={reviewStep}>التالي: مراجعة الطلب</Action>
-                    <Action secondary onPress={() => setStep(0)}>
+                    <Action secondary onPress={() => setStep(isCamp ? 1 : 0)}>
                       السابق
                     </Action>
                   </>
                 )}
-                {step === 2 && (
+                {step === reviewIndex && (
                   <>
                     <Text style={s.title}>راجع طلبك</Text>
                     {[
-                      ["المشارك", `${details.firstName} ${details.lastName}`],
+                      [
+                        "المشارك",
+                        details.arabicFullName ||
+                          `${details.firstName} ${details.lastName}`,
+                      ],
+                      ...(isCamp
+                        ? [
+                            ["الاسم الإنجليزي", details.englishFullName],
+                            ["الرقم الوطني", details.nationalId],
+                            ["الصف", details.grade],
+                            ["ولي الأمر", details.guardianName],
+                            ["هاتف ولي الأمر", details.guardianPhone],
+                            ["صاحب هاتف ولي الأمر", details.guardianPhoneOwner],
+                            ["المدينة", details.city],
+                            ["المدرسة", details.school],
+                            ["التيشيرت", details.shirtSize],
+                            [
+                              "التوصيات الطبية",
+                              activity.collectMedical
+                                ? details.medicalNotes || "لا يوجد"
+                                : "لم تُطلب هذه البيانات",
+                            ],
+                            [
+                              "الحساسية",
+                              activity.collectMedical
+                                ? details.allergies || "لا يوجد"
+                                : "لم تُطلب هذه البيانات",
+                            ],
+                          ]
+                        : []),
                       ["البريد", details.email],
                       ["الهاتف", details.phone],
                       ["العمر", details.age],
@@ -732,7 +962,7 @@ export default function Registrations({ content, user, onDone }) {
                     <Action disabled={!consent} onPress={submit}>
                       إرسال طلب التسجيل
                     </Action>
-                    <Action secondary onPress={() => setStep(1)}>
+                    <Action secondary onPress={() => setStep(servicesStep)}>
                       السابق
                     </Action>
                   </>
@@ -742,7 +972,7 @@ export default function Registrations({ content, user, onDone }) {
                     {message}
                   </Text>
                 )}
-                {step === 3 && success && (
+                {step === successStep && success && (
                   <>
                     <View style={s.success}>
                       <Ionicons name="checkmark-circle" size={64} />
@@ -769,6 +999,22 @@ export default function Registrations({ content, user, onDone }) {
                         {success.reference}
                       </Text>
                     </View>
+                    {success.status === "Pending" && success.feeAmount > 0 && (
+                      <Action
+                        onPress={() => {
+                          setReceiptId(success.id);
+                          setReceiptImage(null);
+                          setReceiptReference("");
+                          setActivityId(null);
+                          setFilter("mine");
+                        }}
+                      >
+                        تحميل وصل الإيداع
+                      </Action>
+                    )}
+                    <Action secondary onPress={() => open(activity)}>
+                      تسجيل مشارك جديد
+                    </Action>
                     <Action
                       onPress={() => {
                         setActivityId(null);
@@ -802,6 +1048,105 @@ export default function Registrations({ content, user, onDone }) {
               </View>
             </View>
           )}
+        </SafeAreaView>
+      </Modal>
+      <Modal
+        visible={!!receiptId}
+        animationType="slide"
+        onRequestClose={() => setReceiptId(null)}
+      >
+        <SafeAreaView style={s.modal}>
+          <ScrollView contentContainerStyle={s.modalContent}>
+            <Action secondary onPress={() => setReceiptId(null)}>
+              إغلاق ×
+            </Action>
+            <Text style={s.heading}>وصل الإيداع</Text>
+            <Text style={s.body}>
+              {records.find((r) => r.id === receiptId)?.details
+                .arabicFullName ||
+                records.find((r) => r.id === receiptId)?.activityTitle}
+            </Text>
+            <Text style={s.note}>
+              معاينة محلية: استخدم صورة وصل وهمية فقط. لا يتم إرسال المال أو
+              التحقق المصرفي هنا.
+            </Text>
+            <Action onPress={chooseReceipt}>اختيار صورة الوصل</Action>
+            {receiptImage && (
+              <Image
+                source={{ uri: receiptImage.uri }}
+                accessibilityLabel="معاينة وصل الإيداع"
+                style={s.documentPreview}
+              />
+            )}
+            <Text style={s.label}>الرقم المرجعي للوصل</Text>
+            <TextInput
+              accessibilityLabel="الرقم المرجعي للوصل"
+              style={s.input}
+              value={receiptReference}
+              maxLength={100}
+              onChangeText={setReceiptReference}
+            />
+            {!!message && <Text style={s.error}>{message}</Text>}
+            <Action
+              disabled={!receiptImage || !receiptReference.trim()}
+              onPress={uploadReceipt}
+            >
+              تأكيد رفع الوصل
+            </Action>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+      <Modal
+        visible={!!ticketId}
+        animationType="slide"
+        onRequestClose={() => setTicketId(null)}
+      >
+        <SafeAreaView style={s.modal}>
+          <ScrollView contentContainerStyle={s.modalContent}>
+            <Action secondary onPress={() => setTicketId(null)}>
+              إغلاق ×
+            </Action>
+            {(() => {
+              const r = records.find((r) => r.id === ticketId);
+              if (!r || r.status !== "Confirmed")
+                return <Text>لا توجد بطاقة مؤكدة.</Text>;
+              return (
+                <>
+                  <Text style={s.heading}>بطاقة المشاركة</Text>
+                  <Text style={s.title}>
+                    {r.details.arabicFullName ||
+                      `${r.details.firstName} ${r.details.lastName}`}
+                  </Text>
+                  <Text style={s.body}>{r.activityTitle}</Text>
+                  <View style={s.qr}>
+                    <QRCode
+                      value={JSON.stringify({
+                        type: "spark-preview",
+                        registration: r.id,
+                        activity: r.activityId,
+                      })}
+                      size={210}
+                    />
+                  </View>
+                  <Text selectable style={s.reference}>
+                    {r.reference}
+                  </Text>
+                  {r.details.tentNumber != null && (
+                    <Text style={s.title}>الخيمة {r.details.tentNumber}</Text>
+                  )}
+                  <Text style={s.info}>
+                    {activities.find((a) => a.id === r.activityId)
+                      ?.afterRegistrationInstructions ||
+                      "أبرز البطاقة عند الوصول بعد تفعيل نظام التحقق."}
+                  </Text>
+                  <Text style={s.note}>
+                    QR تجريبي؛ لا يحتوي رقم الهوية أو المعلومات الطبية، ولا يعمل
+                    كتذكرة موثقة دون نظام تحقق خلفي.
+                  </Text>
+                </>
+              );
+            })()}
+          </ScrollView>
         </SafeAreaView>
       </Modal>
       <Modal
@@ -840,6 +1185,30 @@ export default function Registrations({ content, user, onDone }) {
   );
 }
 const s = StyleSheet.create({
+  groupHeading: {
+    fontFamily: "TajawalBold",
+    fontSize: 18,
+    textAlign: "right",
+    marginTop: 20,
+    marginBottom: 14,
+  },
+  documentPreview: {
+    width: "100%",
+    height: 220,
+    resizeMode: "contain",
+    marginVertical: 16,
+  },
+  qr: {
+    alignSelf: "center",
+    padding: 24,
+    backgroundColor: "#fff",
+    marginVertical: 24,
+  },
+  participantName: {
+    fontSize: 17,
+    fontFamily: "TajawalBold",
+    marginBottom: 12,
+  },
   tentGrid: {
     flexDirection: "row-reverse",
     flexWrap: "wrap",

@@ -1,4 +1,5 @@
 const { chromium } = require("playwright");
+const { fillCampParticipant, fillCampExtra } = require("./camp-fixtures.cjs");
 const assert = require("node:assert/strict");
 const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
 (async () => {
@@ -54,26 +55,20 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
     await page.goto(base + "/app");
     await page.getByLabel("اسمك في المعاينة").fill("مشارك أول");
     await page.getByRole("button", { name: "دخول تجريبي" }).click();
+    let participantIndex = 0;
     const openCamp = async () => {
+      participantIndex++;
       await page.getByRole("tab", { name: "الأنشطة", exact: true }).click();
       await page.getByRole("button", { name: "مخيمات", exact: true }).click();
       await page
         .getByRole("button", { name: "سجّل الآن", exact: false })
         .click();
-      await page
-        .getByLabel("البريد الإلكتروني", { exact: true })
-        .fill("demo@example.com");
-      await page
-        .getByLabel("تاريخ الميلاد (مطلوب)", { exact: true })
-        .fill("2011-02-03");
-      await page.getByRole("button", { name: "ذكر", exact: true }).click();
-      await page.getByLabel("رقم الهاتف", { exact: true }).fill("0790000000");
-      await page
-        .getByLabel("المدينة أو العنوان", { exact: true })
-        .fill("مدينة تجريبية");
-      await page
-        .getByRole("button", { name: "التالي: الخدمات الاختيارية" })
-        .click();
+      await fillCampParticipant(page, {
+        name: participantIndex === 1 ? "مشارك تجريبي أول" : "مشارك تجريبي ثاني",
+        nationalId: "DEMO-TENT-" + participantIndex,
+        dob: "2011-02-03",
+      });
+      await fillCampExtra(page);
     };
     await openCamp();
     assert.equal(
@@ -86,10 +81,12 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
     );
     await page.getByRole("button", { name: "الخيمة 0", exact: true }).click();
     await page.getByRole("button", { name: "السابق", exact: true }).click();
+    await page.getByRole("button", { name: "السابق", exact: true }).click();
     await page.getByRole("button", { name: "أنثى", exact: true }).click();
     await page
-      .getByRole("button", { name: "التالي: الخدمات الاختيارية" })
+      .getByRole("button", { name: "التالي: ولي الأمر والمعلومات الأخرى" })
       .click();
+    await page.getByRole("button", { name: "التالي: الخيمة والخدمات" }).click();
     assert.equal(
       await page.getByRole("button", { name: "الخيمة 0", exact: true }).count(),
       0,
@@ -99,10 +96,12 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
       1,
     );
     await page.getByRole("button", { name: "السابق", exact: true }).click();
+    await page.getByRole("button", { name: "السابق", exact: true }).click();
     await page.getByRole("button", { name: "ذكر", exact: true }).click();
     await page
-      .getByRole("button", { name: "التالي: الخدمات الاختيارية" })
+      .getByRole("button", { name: "التالي: ولي الأمر والمعلومات الأخرى" })
       .click();
+    await page.getByRole("button", { name: "التالي: الخيمة والخدمات" }).click();
     await page.getByRole("button", { name: "التالي: مراجعة الطلب" }).click();
     await page.getByText("اختر رقم الخيمة.", { exact: true }).waitFor();
     await page.getByRole("button", { name: "الخيمة 0", exact: true }).click();
@@ -158,17 +157,25 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
     await admin
       .getByRole("button", { name: "طلبات التسجيل", exact: true })
       .click();
-    const first = admin.locator("article").filter({ hasText: "مشارك أول" }),
-      second = admin.locator("article").filter({ hasText: "مشارك ثاني" });
-    await second.getByRole("button", { name: "تأكيد الطلب" }).click();
+    const first = admin
+        .locator("article")
+        .filter({ hasText: "مشارك تجريبي أول" }),
+      second = admin
+        .locator("article")
+        .filter({ hasText: "مشارك تجريبي ثاني" });
+    await second
+      .getByRole("button", { name: "تخصيص المقعد وطلب الدفع" })
+      .click();
     await admin
       .getByRole("status")
       .filter({ hasText: "اختر رقم الخيمة" })
       .waitFor();
     await first.getByRole("button", { name: "رفض الطلب" }).click();
     await second.getByRole("combobox").selectOption("0");
-    await second.getByRole("button", { name: "تأكيد الطلب" }).click();
-    await page.getByText("مؤكد", { exact: true }).waitFor();
+    await second
+      .getByRole("button", { name: "تخصيص المقعد وطلب الدفع" })
+      .click();
+    await page.getByText("قيد المراجعة", { exact: true }).waitFor();
     await page.getByText("الخيمة 0", { exact: true }).waitFor();
     await editCamp();
     await admin.getByLabel("السعة · الخيمة 0", { exact: true }).fill("0");
@@ -185,11 +192,14 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
       .check();
     await admin.getByRole("button", { name: "حفظ المحتوى" }).click();
     await page.getByRole("button", { name: "مخيمات", exact: true }).click();
-    await page
+    const campBody = page
+      .getByText("مخيم سبارك · تحت النجوم", { exact: true })
+      .locator("..");
+    await campBody
       .getByRole("button", { name: "غير فعّال", exact: true })
       .waitFor();
     assert(
-      await page
+      await campBody
         .getByRole("button", { name: "غير فعّال", exact: true })
         .isDisabled(),
     );

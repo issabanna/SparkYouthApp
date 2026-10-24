@@ -20,6 +20,16 @@
     },
     "experiments": {
       "baseUrl": "/app"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "اسمح لسبارك باختيار صورة الهوية أو وصل الإيداع التي تحددها.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ]
   }
 }

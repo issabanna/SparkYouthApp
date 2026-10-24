@@ -1,4 +1,5 @@
 const { chromium } = require("playwright");
+const { fillCampParticipant, fillCampExtra } = require("./camp-fixtures.cjs");
 const assert = require("node:assert/strict");
 const base = process.env.SPARK_TEST_URL || "http://localhost:3008";
 (async () => {
@@ -24,24 +25,14 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3008";
     await page.getByRole("button", { name: "مخيمات", exact: true }).click();
     await page.getByRole("button", { name: "سجّل الآن", exact: false }).click();
     await page
-      .getByRole("button", { name: "التالي: الخدمات الاختيارية" })
+      .getByRole("button", { name: "التالي: ولي الأمر والمعلومات الأخرى" })
       .click();
     await page
       .getByText("أدخل بريدًا إلكترونيًا صحيحًا.", { exact: true })
       .waitFor();
     const fill = async () => {
-      await page
-        .getByLabel("البريد الإلكتروني", { exact: true })
-        .fill("demo@example.com");
-      await page.getByLabel("العمر", { exact: true }).fill("16");
-      await page.getByRole("button", { name: "ذكر", exact: true }).click();
-      await page.getByLabel("رقم الهاتف", { exact: true }).fill("0790000000");
-      await page
-        .getByLabel("المدينة أو العنوان", { exact: true })
-        .fill("مدينة تجريبية");
-      await page
-        .getByRole("button", { name: "التالي: الخدمات الاختيارية" })
-        .click();
+      await fillCampParticipant(page);
+      await fillCampExtra(page);
       await page.getByRole("checkbox", { name: "أحتاج مواصلات" }).click();
       await page.getByRole("button", { name: "التالي: مراجعة الطلب" }).click();
     };
@@ -75,12 +66,12 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3008";
     await page.getByRole("button", { name: "مخيمات", exact: true }).click();
     assert.equal(
       await page
-        .getByRole("button", { name: "سجّل الآن", exact: false })
+        .getByRole("button", { name: "سجّل مشاركًا آخر", exact: false })
         .count(),
-      0,
+      1,
     );
     await page
-      .getByRole("button", { name: "قيد المراجعة · عرض طلبي", exact: true })
+      .getByRole("button", { name: "عرض تسجيلاتي لهذا النشاط", exact: true })
       .click();
     const admin = await context.newPage();
     admin.on("pageerror", (e) => errors.push(e.message));
@@ -88,7 +79,7 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3008";
     await admin
       .getByRole("button", { name: "طلبات التسجيل", exact: true })
       .click();
-    await admin.getByText("مشارك تجريبي ·", { exact: false }).waitFor();
+    await admin.getByText("مشارك تجريبي أول ·", { exact: false }).waitFor();
     await admin
       .getByRole("button", { name: "تأكيد الطلب", exact: true })
       .click();
@@ -102,14 +93,12 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3008";
     await admin
       .getByRole("button", { name: "المخيمات والأنشطة", exact: true })
       .click();
-    const tripCard = admin
-      .locator("article")
-      .filter({
-        has: admin.getByRole("heading", {
-          name: "رحلة مسار الطبيعة",
-          exact: true,
-        }),
-      });
+    const tripCard = admin.locator("article").filter({
+      has: admin.getByRole("heading", {
+        name: "رحلة مسار الطبيعة",
+        exact: true,
+      }),
+    });
     await tripCard.getByRole("button", { name: "تعديل", exact: true }).click();
     await admin.getByLabel("السعة الكلية", { exact: true }).fill("20");
     await admin.getByRole("button", { name: "حفظ المحتوى" }).click();
@@ -117,7 +106,19 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3008";
     await page
       .getByRole("button", { name: "انضم إلى قائمة الانتظار", exact: true })
       .click();
-    await fill();
+    await page.getByLabel("الاسم الأول", { exact: true }).fill("مشارك");
+    await page.getByLabel("اسم العائلة", { exact: true }).fill("تجريبي");
+    await page
+      .getByLabel("البريد الإلكتروني", { exact: true })
+      .fill("demo@example.com");
+    await page.getByLabel("العمر", { exact: true }).fill("16");
+    await page.getByRole("button", { name: "ذكر", exact: true }).click();
+    await page.getByLabel("رقم الهاتف", { exact: true }).fill("0790000000");
+    await page.getByLabel("المدينة أو العنوان", { exact: true }).fill("مدينة");
+    await page
+      .getByRole("button", { name: "التالي: الخدمات الاختيارية" })
+      .click();
+    await page.getByRole("button", { name: "التالي: مراجعة الطلب" }).click();
     await page
       .getByRole("checkbox", { name: "أوافق على تعليمات المشاركة" })
       .click();
