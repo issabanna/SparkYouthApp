@@ -38,3 +38,5 @@ Editable reference-inspired templates use Spark branding: purple «مخيم ال
 This remains a browser-local prototype, without real authentication or private server storage. Use fictional ID, guardian, medical and receipt information only. Image uploads are limited to 500 kB to fit local storage; a full store can reject a save without replacing existing records. Native previews keep records in memory. Actual multiuser uniqueness, transactional reservations, protected documents, encryption/access control, retention rules, bank verification and signed/checkable QR tickets need the backend. Native binaries and physical-device behavior have not been tested.
 
 Existing previews retain their old records. New detailed submissions carry campFormVersion=2; older records are not retroactively forced through newly added payment/document requirements.
+
+Camper registration has no participation-role selector or leader request. New submissions are camper records; leader applications belong to a separate leaders workflow. Existing historical records are preserved.

@@ -123,3 +123,15 @@ assert.equal(tentOccupancy(q, 1, records), 1);
 console.log(
   "PASS: legacy camp fields, multi-camper account, duplicate camper ID, separate tent/payment states, receipt validation/re-upload/review and waitlist-to-payment promotion.",
 );
+
+assert.equal(
+  submitRegistration(
+    a,
+    { name: "اختبار فصل الأدوار" },
+    campDetails({ nationalId: "DEMO-ROLE-ONLY", registrationRole: "leader" }),
+    [],
+    true,
+  ).record.details.registrationRole,
+  "camper",
+  "Camper form cannot create a leader application",
+);

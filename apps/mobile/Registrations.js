@@ -656,8 +656,7 @@ export default function Registrations({ content, user, onDone }) {
                       {activity.useAgeLimits
                         ? `العمر المسموح ${activity.minAge}–${activity.maxAge} سنة. `
                         : ""}
-                      {displayRange(activity.gradeLabel)} طلب المرشد يحتاج
-                      موافقة مستقلة ولا يمنح صلاحيات.
+                      {displayRange(activity.gradeLabel)}
                     </Text>
                     {isCamp ? (
                       <CampIdentity
@@ -723,25 +722,6 @@ export default function Registrations({ content, user, onDone }) {
                       field("address", "المدينة أو العنوان", {
                         maxLength: 200,
                       })}
-                    <Text style={s.label}>دور المشاركة</Text>
-                    <View style={s.choices}>
-                      {[
-                        ["camper", "مشارك"],
-                        ["leader", "طلب مرشد"],
-                      ].map(([v, t]) => (
-                        <Pressable
-                          accessibilityRole="button"
-                          key={v}
-                          onPress={() => update("registrationRole", v)}
-                          style={[
-                            s.choice,
-                            details.registrationRole === v && s.choiceActive,
-                          ]}
-                        >
-                          <Text>{t}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
                     <Action onPress={next}>
                       {isCamp
                         ? "التالي: ولي الأمر والمعلومات الأخرى"
@@ -957,12 +937,6 @@ export default function Registrations({ content, user, onDone }) {
                           : "مجانًا",
                       ],
                       ["العنوان", details.address],
-                      [
-                        "الدور",
-                        details.registrationRole === "leader"
-                          ? "طلب مرشد"
-                          : "مشارك",
-                      ],
                       ["الوجبات", details.meals ? "مطلوبة" : "غير مطلوبة"],
                       [
                         "المواصلات",

@@ -58,6 +58,14 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3015";
         .click();
       await page.getByRole("button", { name: "إرسال طلب التسجيل" }).click();
     };
+    assert.equal(
+      await page.getByText("دور المشاركة", { exact: true }).count(),
+      0,
+    );
+    assert.equal(
+      await page.getByRole("button", { name: "طلب مرشد", exact: true }).count(),
+      0,
+    );
     await register(
       { name: "مشارك تجريبي أول", nationalId: "DEMO-FAMILY-1" },
       0,

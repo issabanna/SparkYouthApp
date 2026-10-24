@@ -215,8 +215,6 @@ function validateDetails(d, a, stage = "all") {
     errors.age = `العمر المسموح من ${a.minAge} إلى ${a.maxAge} سنة.`;
   if (a.kind !== "camp" && !d.address?.trim())
     errors.address = "أدخل المدينة أو العنوان.";
-  if (!["camper", "leader"].includes(d.registrationRole))
-    errors.registrationRole = "اختر دور المشاركة.";
   const today = new Date().toISOString().slice(0, 10);
   if (a.kind === "camp") {
     if (!validDate(d.dob || "") || d.dob > today)
@@ -295,6 +293,7 @@ function validateDetails(d, a, stage = "all") {
 }
 function submitRegistration(activity, user, details, records, consent) {
   const a = normalizeActivity(activity);
+  details = { ...details, registrationRole: "camper" };
   if (a.kind === "camp") {
     const names = (details.arabicFullName || "").trim().split(/\s+/);
     details = {
