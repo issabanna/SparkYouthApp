@@ -875,12 +875,12 @@ export default function Dashboard() {
                     <label className="checkbox">
                       <input
                         type="checkbox"
-                        checked={draft.allowWaitlist ?? true}
-                        onChange={(e) =>
-                          change("allowWaitlist", e.target.checked)
-                        }
+                        checked={draft.kind === "camp" ? draft.registrationMode === "waitingList" : draft.allowWaitlist ?? true}
+                        onChange={(e) => draft.kind === "camp"
+                          ? setDraft({ ...draft, allowWaitlist: e.target.checked, registrationMode: e.target.checked ? "waitingList" : "standard", registrationOpen: true })
+                          : change("allowWaitlist", e.target.checked)}
                       />{" "}
-                      السماح بقائمة الانتظار
+                      {draft.kind === "camp" ? "تفعيل قائمة الانتظار وإخفاء جميع الخيام" : "السماح بقائمة الانتظار"}
                     </label>
                     <label>
                       التاريخ (اختياري)

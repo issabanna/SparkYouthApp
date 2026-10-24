@@ -797,7 +797,7 @@ export default function Registrations({ content, user, onDone }) {
                       onImage={chooseId}
                     />
                     <Action disabled={idChecking} onPress={nextCampExtra}>
-                      {hasTentStep ? "التالي: اختيار الخيمة" : "التالي: مراجعة الطلب"}
+                      {activity.registrationMode === "waitingList" ? "التالي: قائمة الانتظار" : hasTentStep ? "التالي: اختيار الخيمة" : "التالي: مراجعة الطلب"}
                     </Action>
                     <Action secondary onPress={() => setStep(0)}>
                       السابق
@@ -810,9 +810,7 @@ export default function Registrations({ content, user, onDone }) {
                       <>
                         <Text style={s.title}>التسجيل في قائمة الانتظار</Text>
                         <Text style={s.body}>
-                          الخيام المرقمة غير متاحة للاختيار في هذا الوضع. لن
-                          يُحجز أي مكان؛ تعيّن الإدارة خيمة مناسبة عند توفر مكان
-                          والموافقة على طلبك.
+                          لا توجد خيام متاحة للتسجيل حاليًا. سيُضاف هذا التسجيل إلى قائمة الانتظار، ولن تُحجز خيمة حتى توفر مكان وموافقة الإدارة.
                         </Text>
                         <Pressable
                           accessibilityRole="button"
