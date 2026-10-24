@@ -37,3 +37,7 @@ Content is persisted in browser localStorage under `spark-camp-content-v1`; prog
 ### Browser regression check
 
 After `npm run build`, start the production server on port 3004 with `npm run start --workspace @spark/admin -- --port 3004`. Run `npx playwright install chromium` once, then `npm run test:preview`. If Chromium is already installed, set `CHROMIUM_PATH` to its executable. Set `SPARK_TEST_URL` to test another origin. Tests cover sign-in gating, announcement navigation, gallery viewing, audience rules, reflection persistence, comments, deduplicated completion, and admin edits reaching the app preview.
+
+## Visual identity
+
+Mobile uses bundled Tajawal Arabic fonts, Ionicons navigation, Spark yellow/black/white, a fixed floating tab bar and progress rings. Fonts/icons are included in the web export rather than fetched from a third-party CDN. `public/media/camp.png` is a generated sample camping photograph, not a photograph of actual Spark campers. `spark-logo.png` is a reference-based preview reconstruction of the logo supplied in chat; the original PNG/SVG is needed for exact official branding. It is embedded by default on mobile and admin; a locally uploaded logo still takes priority.

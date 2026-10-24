@@ -9,12 +9,16 @@
     "export:web": "EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 expo export --platform web --output-dir ../admin/public/app"
   },
   "dependencies": {
+    "@expo-google-fonts/tajawal": "^0.4.1",
     "@expo/metro-runtime": "~6.1.2",
+    "@expo/vector-icons": "^15.1.1",
     "@spark/shared": "0.1.0",
     "expo": "~54.0.0",
+    "expo-linear-gradient": "~15.0.8",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-svg": "^15.12.1",
     "react-native-web": "^0.21.4"
   }
 }
