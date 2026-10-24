@@ -21,3 +21,7 @@ Use the existing checkout; a separate worktree is unnecessary.
 5. Adalo migration planning, privacy/guardian requirements, device testing and store delivery.
 
 No existing data is imported. Capacity policy, consent requirements, branding assets and data migration still need final product decisions. Never store plaintext passwords in the Users table.
+
+## Mobile browser review
+
+`npm run build` exports the Expo mobile UI to the admin public/app directory before building Next.js. Visit `/app/` on the deployed site to review the mobile prototype. This is the same React Native screen rendered for web, not a native device test. No login or live backend is connected.
