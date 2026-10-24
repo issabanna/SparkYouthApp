@@ -27,6 +27,8 @@ function fixture(initial,concurrent=false){
 (async()=>{
  const f=fixture();await seed(f.client,name=>Buffer.from(name));assert.equal(f.uploaded.size,4);assert.equal(f.writes(),1);assert(f.get().content.branding.welcomeImage.startsWith('/api/media/'));
  await seed(f.client,name=>Buffer.from(name));assert.equal(f.writes(),1,'Repeated builds must not rewrite content');
+ f.client.storage.from=()=>({upload:async()=>({error:{status:409,statusCode:'ResourceAlreadyExists',code:'ResourceAlreadyExists'}})});
+ await seed(f.client,name=>Buffer.from(name));assert.equal(f.writes(),1,'Modern SDK duplicate codes must also be idempotent');
  const r=fixture(original,true);await seed(r.client,name=>Buffer.from(name));assert.equal(r.get().content.activities[0].title,'Concurrent admin edit');assert.equal(r.get().content.activities[0].image,'/api/media/custom.jpeg');assert.equal(r.get().content.branding.welcomeImage,'');
  const bad=fixture();bad.client.storage.getBucket=async()=>({data:{public:true}});await assert.rejects(seed(bad.client,()=>Buffer.from('image')),/private/);assert.equal(bad.writes(),0);
  console.log('PASS: starter-photo import is idempotent, requires private storage and preserves custom photos, explicit removals and concurrent admin changes.');

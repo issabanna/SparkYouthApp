@@ -32,7 +32,8 @@ async function seed(client, loadFile) {
   for(const name of sources){
     const bytes=loadFile(name),id=imageId(name,bytes);
     const {error}=await client.storage.from(bucket).upload(id,bytes,{upsert:false,contentType:'image/png',cacheControl:'31536000'});
-    if(error&&String(error.statusCode)!=='409')throw new Error('Could not import starter image '+name+'. Check Supabase Storage configuration.');
+    const exists=String(error?.statusCode)==='409'||Number(error?.status)===409||error?.code==='ResourceAlreadyExists';
+    if(error&&!exists)throw new Error('Could not import starter image '+name+'. Check Supabase Storage configuration.');
     replacements['/media/'+name]='/api/media/'+id;
     replacements['https://sparkyouth.vercel.app/media/'+name]='/api/media/'+id;
   }
