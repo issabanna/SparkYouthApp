@@ -27,6 +27,7 @@ import {
   normalizeContent,
   contentVersion,
   ar,
+  kinds,
   defaultContent,
   storageKey,
   canAccessJourney,
@@ -45,7 +46,9 @@ function Text({ style, ...props }) {
           fontWeight: "normal",
         },
         style,
-        { fontWeight: "normal" },
+        {
+          fontWeight: "normal",
+        },
       ]}
     />
   );
@@ -117,7 +120,9 @@ const imageUri = (path) =>
 function Photo({ path, style }) {
   return (
     <Image
-      source={{ uri: imageUri(path) }}
+      source={{
+        uri: imageUri(path),
+      }}
       style={[s.photo, style]}
       accessibilityLabel="صورة توضيحية للمخيم"
     />
@@ -129,7 +134,13 @@ function Button({ children, onPress, disabled, secondary }) {
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={[s.button, secondary && s.secondary, disabled && { opacity: 0.4 }]}
+      style={[
+        s.button,
+        secondary && s.secondary,
+        disabled && {
+          opacity: 0.4,
+        },
+      ]}
     >
       <Text style={s.buttonText}>{children}</Text>
     </Pressable>
@@ -144,9 +155,14 @@ export default function App() {
   });
   const scrollRef = useRef(null);
   const journeyRailRef = useRef(null);
+  const homeRailRef = useRef(null);
   const [content, setContent] = useState(readContent);
   const [profile, setProfile] = useState(() =>
-    load(sessionKey, { user: null, reflections: {}, completed: [] }),
+    load(sessionKey, {
+      user: null,
+      reflections: {},
+      completed: [],
+    }),
   );
   const [tab, setTab] = useState(ar.home),
     [slide, setSlide] = useState(0),
@@ -167,7 +183,10 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    scrollRef.current?.scrollTo({
+      y: 0,
+      animated: false,
+    });
   }, [tab]);
   const updateProfile = (next) => {
     setProfile(next);
@@ -181,7 +200,11 @@ export default function App() {
       (p) =>
         (p.role === "approvedLeader") === (user?.role === "approvedLeader"),
     ),
-    { ...user, name: user?.name + " · أنت", completed: profile.completed },
+    {
+      ...user,
+      name: user?.name + " · أنت",
+      completed: profile.completed,
+    },
   ]
     .map((p) => ({
       ...p,
@@ -201,13 +224,19 @@ export default function App() {
     setReflection(profile.reflections[j.id] || "");
     setComment("");
     setNotice("");
-    setSelected({ type: "journey", id: j.id });
+    setSelected({
+      type: "journey",
+      id: j.id,
+    });
   };
   const complete = () => {
     if (!reflection.trim()) return;
     updateProfile({
       ...profile,
-      reflections: { ...profile.reflections, [journey.id]: reflection.trim() },
+      reflections: {
+        ...profile.reflections,
+        [journey.id]: reflection.trim(),
+      },
       completed: [...new Set([...profile.completed, journey.id])],
     });
     setNotice("تم حفظ تأملك وإكمال المسار. أحسنت!");
@@ -233,7 +262,12 @@ export default function App() {
   if (!fontsLoaded && !fontError)
     return (
       <SafeAreaView style={s.loading}>
-        <NativeText style={{ fontSize: 24, fontWeight: "800" }}>
+        <NativeText
+          style={{
+            fontSize: 24,
+            fontWeight: "800",
+          }}
+        >
           SPARK
         </NativeText>
         <NativeText>جارٍ تجهيز تجربتك…</NativeText>
@@ -259,7 +293,11 @@ export default function App() {
           accessibilityRole="button"
           accessibilityLabel="الإعلانات"
           disabled={!user}
-          onPress={() => setSelected({ type: "announcements" })}
+          onPress={() =>
+            setSelected({
+              type: "announcements",
+            })
+          }
           style={s.notificationButton}
         >
           <Icon name="notifications-outline" size={24} />
@@ -270,7 +308,10 @@ export default function App() {
         <ScrollView contentContainerStyle={s.content}>
           <Photo
             path="/media/camp.png"
-            style={{ height: 230, borderRadius: 24 }}
+            style={{
+              height: 230,
+              borderRadius: 24,
+            }}
           />
           <Text style={s.kicker}>أصدقاء. مغامرة. أثر.</Text>
           <Text style={s.heroTitle}>كل مخيم بداية حكاية</Text>
@@ -307,7 +348,13 @@ export default function App() {
           <Button
             disabled={!name.trim()}
             onPress={() =>
-              updateProfile({ ...profile, user: { name: name.trim(), role } })
+              updateProfile({
+                ...profile,
+                user: {
+                  name: name.trim(),
+                  role,
+                },
+              })
             }
           >
             دخول تجريبي ←
@@ -325,7 +372,11 @@ export default function App() {
                   <View style={s.welcomeAvatar}>
                     <Icon name="sunny" color="#171717" size={23} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      flex: 1,
+                    }}
+                  >
                     <Text style={s.kicker}>أهلًا بعودتك، {user.name}</Text>
                     <Text style={s.heroTitle}>مغامرتنا تجمعنا</Text>
                   </View>
@@ -366,25 +417,62 @@ export default function App() {
                     [ar.programs, "calendar-outline", "تسجيل الأنشطة"],
                     [ar.learning, "book-outline", "تعلّم"],
                     ["gallery", "images-outline", "صور المخيم"],
-                  ].map(([id, icon, label]) => (
+                  ].map(([id, icon, label], index) => (
                     <Pressable
                       key={id}
                       accessibilityRole="button"
                       onPress={() => {
                         if (id === "gallery") {
                           const g = content.galleries.find((g) => g.published);
-                          if (g) setSelected({ type: "gallery", id: g.id });
+                          if (g)
+                            setSelected({
+                              type: "gallery",
+                              id: g.id,
+                            });
                         } else setTab(id);
                       }}
                       style={s.quickAction}
                     >
-                      <View style={s.quickIcon}>
-                        <Icon name={icon} />
+                      <View
+                        style={[
+                          s.quickIcon,
+                          {
+                            backgroundColor: ["#FFF0AC", "#FFE6DA", "#DEF0EC"][
+                              index
+                            ],
+                          },
+                        ]}
+                      >
+                        <Icon
+                          name={icon}
+                          size={22}
+                          color={["#8B7100", "#D66C49", "#21857E"][index]}
+                        />
                       </View>
                       <Text style={s.quickLabel}>{label}</Text>
                     </Pressable>
                   ))}
                 </View>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setTab(ar.learning)}
+                  style={s.homeSummary}
+                >
+                  <View style={s.summaryIcon}>
+                    <Icon name="sparkles" size={23} color="#C58B23" />
+                  </View>
+                  <View
+                    style={{
+                      flex: 1,
+                    }}
+                  >
+                    <Text style={s.summaryTitle}>مساحتك للنمو والتعلّم</Text>
+                    <Text style={s.summaryCopy}>
+                      {completed} مسارات مكتملة · اكتشف ما تتعلّمه اليوم
+                    </Text>
+                  </View>
+                  <Icon name="chevron-back" size={18} color="#AAA" />
+                </Pressable>
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionTitle}>المخيمات والأنشطة</Text>
                   <View style={s.liveBadge}>
@@ -392,48 +480,62 @@ export default function App() {
                     <Text style={s.liveText}>اكتشف</Text>
                   </View>
                 </View>
-                {content.activities
-                  .filter((a) => a.published)
-                  .map((a) => (
-                    <View key={a.id} style={s.activityCard}>
-                      {a.kind === "camp" ? (
-                        <CampPoster
-                          activity={a}
-                          logo={content.branding?.logo}
-                          compact
-                        />
-                      ) : (
+                <ScrollView
+                  horizontal
+                  ref={homeRailRef}
+                  onContentSizeChange={() =>
+                    homeRailRef.current?.scrollToEnd({
+                      animated: false,
+                    })
+                  }
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={s.homeRail}
+                >
+                  {content.activities
+                    .filter((a) => a.published)
+                    .slice(0, 4)
+                    .map((a) => (
+                      <Pressable
+                        key={a.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`عرض ${a.title}`}
+                        disabled={a.inactive || !a.registrationOpen}
+                        onPress={() => setTab(ar.programs)}
+                        style={s.activityCard}
+                      >
                         <Photo path={a.image} style={s.activityPhoto} />
-                      )}
-                      <View style={s.activityBody}>
-                        <View style={s.activityTag}>
-                          <Icon name="trail-sign-outline" size={15} />
-                          <Text style={s.activityTagText}>من قلب المخيم</Text>
-                        </View>
-                        {a.kind !== "camp" && (
-                          <Text style={s.title}>{a.title}</Text>
-                        )}
-                        <View style={s.locationRow}>
-                          <Icon
-                            name="location-outline"
-                            size={14}
-                            color="#6b6b6b"
-                          />
-                          <Text style={s.caption}>
-                            {a.date || "الموعد غير محدد"} · {a.location}
+                        <View style={s.activityBody}>
+                          <View style={s.activityTag}>
+                            <Text style={s.activityTagText}>
+                              {kinds[a.kind] || "نشاط"}
+                            </Text>
+                            <Icon
+                              name={
+                                a.inactive || !a.registrationOpen
+                                  ? "lock-closed-outline"
+                                  : "arrow-back"
+                              }
+                              size={15}
+                              color="#777"
+                            />
+                          </View>
+                          <Text style={s.title} numberOfLines={2}>
+                            {a.title}
                           </Text>
+                          <View style={s.locationRow}>
+                            <Icon
+                              name="calendar-outline"
+                              size={13}
+                              color="#999"
+                            />
+                            <Text style={s.caption} numberOfLines={1}>
+                              {a.startDate || a.date || "الموعد غير محدد"}
+                            </Text>
+                          </View>
                         </View>
-                        <Button
-                          disabled={!!a.inactive || !a.registrationOpen}
-                          onPress={() => setTab(ar.programs)}
-                        >
-                          {a.inactive || !a.registrationOpen
-                            ? "غير فعّال"
-                            : "تفاصيل النشاط والتسجيل ←"}
-                        </Button>
-                      </View>
-                    </View>
-                  ))}
+                      </Pressable>
+                    ))}
+                </ScrollView>
                 {!content.activities.some((a) => a.published) && (
                   <Text style={s.body}>
                     لا توجد أنشطة معلنة حاليًا. تابعنا قريبًا.
@@ -449,7 +551,12 @@ export default function App() {
                     <Pressable
                       accessibilityRole="button"
                       key={g.id}
-                      onPress={() => setSelected({ type: "gallery", id: g.id })}
+                      onPress={() =>
+                        setSelected({
+                          type: "gallery",
+                          id: g.id,
+                        })
+                      }
                       style={s.galleryCard}
                     >
                       <Photo path={g.images[0]} style={s.galleryPhoto} />
@@ -497,7 +604,11 @@ export default function App() {
                 <Text style={s.kicker}>مساحتك لتكبر</Text>
                 <Text style={s.heroTitle}>مسارات التعلّم</Text>
                 <View style={s.progressCard}>
-                  <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      flex: 1,
+                    }}
+                  >
                     <Text style={s.progressOverline}>كل خطوة بتعمل فرق</Text>
                     <Text style={s.progressHeading}>
                       {completed ? "أثرُك عم يكبر!" : "جاهز لخطوتك التالية؟"}
@@ -528,7 +639,9 @@ export default function App() {
                 <ScrollView
                   ref={journeyRailRef}
                   onContentSizeChange={() =>
-                    journeyRailRef.current?.scrollToEnd({ animated: false })
+                    journeyRailRef.current?.scrollToEnd({
+                      animated: false,
+                    })
                   }
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -591,7 +704,11 @@ export default function App() {
                       style={s.completedCard}
                     >
                       <Photo path={j.image} style={s.completedPhoto} />
-                      <View style={{ flex: 1 }}>
+                      <View
+                        style={{
+                          flex: 1,
+                        }}
+                      >
                         <Text style={s.title}>{j.title}</Text>
                         <Text style={s.completedLabel}>
                           أكملت هذا المسار · راجع تأمّلك
@@ -718,7 +835,9 @@ export default function App() {
                 <Pressable
                   accessibilityRole="tab"
                   accessibilityLabel={label}
-                  accessibilityState={{ selected: tab === label }}
+                  accessibilityState={{
+                    selected: tab === label,
+                  }}
                   key={label}
                   onPress={() => setTab(label)}
                   style={s.tab}
@@ -839,7 +958,10 @@ export default function App() {
                       <Photo
                         key={i}
                         path={path}
-                        style={{ marginBottom: 16, height: 240 }}
+                        style={{
+                          marginBottom: 16,
+                          height: 240,
+                        }}
                       />
                     ))}
                   </>
@@ -853,31 +975,46 @@ export default function App() {
 }
 const s = StyleSheet.create({
   identityCard: {
-    backgroundColor: "#171717",
-    borderRadius: 25,
-    padding: 28,
+    backgroundColor: "#fff",
+    borderRadius: 27,
+    padding: 26,
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 6,
     marginBottom: 20,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
   identityIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#ffda00",
+    width: 76,
+    height: 76,
+    borderRadius: 26,
+    backgroundColor: "#FFF0AF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 17,
+    marginBottom: 16,
   },
-  identityName: { fontSize: 27, fontWeight: "800", color: "#fff" },
-  identityRole: { fontSize: 13, color: "#bbb", marginTop: 8 },
+  identityName: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#33332D",
+  },
+  identityRole: {
+    fontSize: 12,
+    color: "#9B958B",
+    marginTop: 8,
+  },
   identityStats: {
     flexDirection: "row-reverse",
-    gap: 14,
+    gap: 13,
     alignItems: "center",
-    marginTop: 24,
+    marginTop: 23,
+    padding: 14,
+    backgroundColor: "#F8F6F0",
+    borderRadius: 15,
   },
-  identityStat: { fontSize: 12, color: "#fff" },
+  identityStat: {
+    fontSize: 12,
+    color: "#6F695D",
+  },
   loading: {
     flex: 1,
     alignItems: "center",
@@ -885,54 +1022,63 @@ const s = StyleSheet.create({
     gap: 16,
     backgroundColor: "#ffda00",
   },
-  brandGroup: { flexDirection: "row-reverse", alignItems: "center", gap: 9 },
-  logoImage: { width: 47, height: 47, resizeMode: "contain" },
+  brandGroup: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 9,
+  },
+  logoImage: {
+    width: 43,
+    height: 43,
+    resizeMode: "contain",
+    backgroundColor: "#fff",
+    borderRadius: 13,
+  },
   wordmark: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: "800",
     textAlign: "right",
-    letterSpacing: 1,
+    letterSpacing: 0.7,
   },
   notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#f5f5f5",
+    width: 39,
+    height: 39,
+    borderRadius: 13,
+    backgroundColor: "#FFF9DF",
     alignItems: "center",
     justifyContent: "center",
   },
   notificationDot: {
-    width: 8,
-    height: 8,
-    backgroundColor: "#ffda00",
+    width: 7,
+    height: 7,
+    backgroundColor: "#EB7859",
     position: "absolute",
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 9,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "#fff",
+    borderColor: "#FFF9DF",
   },
   welcomeRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 12,
-    marginTop: 8,
-    marginBottom: 10,
+    gap: 10,
+    marginBottom: 14,
   },
   welcomeAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#ffda00",
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: "#ECE8DC",
     alignItems: "center",
     justifyContent: "center",
   },
   heroCard: {
-    height: 310,
+    height: 224,
     borderRadius: 25,
     overflow: "hidden",
-    backgroundColor: "#191919",
-    marginTop: 6,
+    backgroundColor: "#31332E",
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
   heroPhoto: {
     position: "absolute",
@@ -940,96 +1086,140 @@ const s = StyleSheet.create({
     height: "100%",
     borderRadius: 0,
   },
-  heroGradient: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+  heroGradient: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
   heroCategory: {
     position: "absolute",
-    top: 18,
-    right: 18,
-    backgroundColor: "#ffda00",
-    borderRadius: 8,
-    paddingHorizontal: 11,
+    top: 15,
+    right: 15,
+    backgroundColor: "#FFF6D2",
+    borderRadius: 10,
+    paddingHorizontal: 10,
     paddingVertical: 7,
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: 6,
   },
-  heroCategoryText: { fontSize: 11, fontWeight: "700", color: "#111" },
-  heroCopy: { position: "absolute", bottom: 25, left: 22, right: 22 },
+  heroCategoryText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#76621D",
+  },
+  heroCopy: {
+    position: "absolute",
+    bottom: 20,
+    left: 19,
+    right: 19,
+  },
   heroHeading: {
-    fontSize: 29,
+    fontSize: 24,
     fontWeight: "800",
     color: "#fff",
     textAlign: "right",
-    marginBottom: 8,
+    marginBottom: 5,
   },
   heroDescription: {
-    fontSize: 13,
-    lineHeight: 22,
-    color: "#eee",
+    fontSize: 11,
+    lineHeight: 20,
+    color: "#ECEAE3",
     textAlign: "right",
   },
   quickRow: {
     flexDirection: "row-reverse",
     gap: 10,
-    marginTop: 20,
-    marginBottom: 8,
+    marginTop: 15,
+    marginBottom: 16,
   },
   quickAction: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 13,
-    borderRadius: 17,
-    backgroundColor: "#f6f6f6",
-    gap: 8,
+    paddingVertical: 15,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    gap: 9,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
   quickIcon: {
-    width: 35,
-    height: 35,
+    width: 39,
+    height: 39,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  quickLabel: { fontSize: 11, fontWeight: "700", color: "#222" },
+  quickLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#49463F",
+  },
   sectionHeader: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 27,
+    marginTop: 25,
     marginBottom: 15,
   },
   liveBadge: {
     flexDirection: "row-reverse",
     gap: 5,
     alignItems: "center",
-    backgroundColor: "#fff5bf",
-    paddingHorizontal: 9,
     paddingVertical: 5,
-    borderRadius: 12,
   },
-  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#c7a500" },
-  liveText: { fontSize: 10, color: "#6e5b00" },
+  liveDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#D0B54E",
+  },
+  liveText: {
+    fontSize: 11,
+    color: "#999489",
+  },
   activityCard: {
-    borderRadius: 21,
+    width: 247,
+    borderRadius: 23,
     overflow: "hidden",
-    backgroundColor: "#f7f7f7",
-    marginBottom: 12,
+    backgroundColor: "#fff",
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
-  activityPhoto: { height: 170, borderRadius: 0 },
-  activityBody: { padding: 17 },
+  activityPhoto: {
+    height: 133,
+    borderRadius: 0,
+  },
+  activityBody: {
+    padding: 16,
+  },
   activityTag: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 5,
+    justifyContent: "space-between",
     marginBottom: 8,
   },
-  activityTagText: { fontSize: 10, fontWeight: "700", color: "#555" },
-  locationRow: { flexDirection: "row-reverse", alignItems: "center", gap: 4 },
-  galleryCard: {
-    height: 220,
-    borderRadius: 22,
-    overflow: "hidden",
-    marginBottom: 15,
+  activityTagText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#D87A53",
   },
-  galleryPhoto: { height: "100%", borderRadius: 0 },
+  locationRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 5,
+  },
+  galleryCard: {
+    height: 188,
+    borderRadius: 24,
+    overflow: "hidden",
+    marginBottom: 12,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
+  },
+  galleryPhoto: {
+    height: "100%",
+    borderRadius: 0,
+  },
   galleryCount: {
     position: "absolute",
     top: 15,
@@ -1040,7 +1230,10 @@ const s = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
-  galleryCountText: { fontSize: 11, color: "#fff" },
+  galleryCountText: {
+    fontSize: 11,
+    color: "#fff",
+  },
   galleryCopy: {
     position: "absolute",
     bottom: 22,
@@ -1051,47 +1244,47 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
   },
   galleryTitle: {
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: "700",
     color: "#fff",
     flex: 1,
     textAlign: "right",
   },
   arrowCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#ffda00",
+    width: 33,
+    height: 33,
+    borderRadius: 12,
+    backgroundColor: "#FFDA00",
     alignItems: "center",
     justifyContent: "center",
   },
   blackCallout: {
-    backgroundColor: "#151515",
-    padding: 24,
-    borderRadius: 24,
-    marginTop: 18,
+    backgroundColor: "#247F78",
+    padding: 23,
+    borderRadius: 25,
+    marginTop: 16,
   },
   yellowBadge: {
     alignSelf: "flex-end",
-    width: 43,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: "#ffda00",
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: "#F8EBA5",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 17,
+    marginBottom: 15,
   },
   calloutTitle: {
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: "800",
     color: "#fff",
     textAlign: "right",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   calloutText: {
-    fontSize: 13,
-    lineHeight: 23,
-    color: "#bdbdbd",
+    fontSize: 12,
+    lineHeight: 22,
+    color: "#D4E6DF",
     textAlign: "right",
     marginBottom: 10,
   },
@@ -1104,46 +1297,49 @@ const s = StyleSheet.create({
   },
   tabDock: {
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
-    backgroundColor: "#fff",
+    paddingTop: 7,
+    paddingBottom: 13,
+    backgroundColor: "#F6F4EF",
   },
   tabIconWrap: {
-    width: 49,
-    height: 32,
-    borderRadius: 12,
+    width: 43,
+    height: 29,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
   },
-  tabSelected: { backgroundColor: "#ffda00" },
+  tabSelected: {
+    backgroundColor: "#FFF0AD",
+  },
   progressCard: {
-    backgroundColor: "#ffda00",
+    backgroundColor: "#FFE078",
     padding: 22,
-    borderRadius: 25,
+    borderRadius: 26,
     flexDirection: "row-reverse",
-    gap: 10,
+    gap: 12,
     alignItems: "center",
-    marginTop: 10,
-    marginBottom: 9,
+    marginTop: 8,
+    marginBottom: 10,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
   progressOverline: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: "right",
-    color: "#655500",
-    marginBottom: 8,
+    color: "#A28644",
+    marginBottom: 7,
   },
   progressHeading: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: "800",
     textAlign: "right",
-    color: "#111",
-    lineHeight: 32,
+    color: "#4C4022",
+    lineHeight: 31,
   },
   progressMeta: {
-    fontSize: 13,
+    fontSize: 12,
     textAlign: "right",
-    color: "#3d3500",
-    marginTop: 9,
+    color: "#8D743B",
+    marginTop: 8,
   },
   progressChip: {
     flexDirection: "row-reverse",
@@ -1155,8 +1351,14 @@ const s = StyleSheet.create({
     borderRadius: 8,
     marginTop: 10,
   },
-  progressChipText: { fontSize: 10, fontWeight: "700" },
-  ring: { width: 94, height: 94 },
+  progressChipText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  ring: {
+    width: 94,
+    height: 94,
+  },
   ringText: {
     position: "absolute",
     top: 0,
@@ -1166,41 +1368,61 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  ringValue: { fontSize: 23, fontWeight: "800", color: "#111" },
-  journeyRail: { flexDirection: "row-reverse", gap: 14, paddingBottom: 8 },
+  ringValue: {
+    fontSize: 23,
+    fontWeight: "800",
+    color: "#111",
+  },
+  journeyRail: {
+    flexDirection: "row-reverse",
+    gap: 14,
+    paddingBottom: 8,
+  },
   journeyTile: {
-    width: 247,
-    borderWidth: 1,
-    borderColor: "#e7e7e7",
-    borderRadius: 21,
+    width: 244,
+    borderRadius: 23,
     overflow: "hidden",
     backgroundColor: "#fff",
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
-  journeyPhoto: { height: 160, borderRadius: 0 },
+  journeyPhoto: {
+    height: 142,
+    borderRadius: 0,
+  },
   journeyNumber: {
     position: "absolute",
-    top: 13,
-    right: 13,
-    backgroundColor: "#ffda00",
+    top: 12,
+    right: 12,
+    backgroundColor: "#FFF7DE",
     padding: 7,
-    borderRadius: 8,
+    borderRadius: 9,
     flexDirection: "row-reverse",
     gap: 4,
     alignItems: "center",
   },
-  journeyTime: { fontSize: 10, fontWeight: "700" },
-  journeyTileBody: { padding: 17 },
+  journeyTime: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#86723A",
+  },
+  journeyTileBody: {
+    padding: 17,
+  },
   journeyFooter: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  journeyLink: { fontSize: 12, fontWeight: "700", color: "#191919" },
+  journeyLink: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#191919",
+  },
   smallBlackCircle: {
     width: 30,
     height: 30,
-    borderRadius: 15,
-    backgroundColor: "#171717",
+    borderRadius: 11,
+    backgroundColor: "#27877F",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1208,18 +1430,26 @@ const s = StyleSheet.create({
     flexDirection: "row-reverse",
     gap: 12,
     alignItems: "center",
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#e8e8e8",
-    borderRadius: 18,
+    padding: 13,
+    backgroundColor: "#fff",
+    borderRadius: 21,
     marginBottom: 12,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
-  completedPhoto: { width: 64, height: 70, borderRadius: 12 },
-  completedLabel: { fontSize: 10, color: "#777", textAlign: "right" },
+  completedPhoto: {
+    width: 64,
+    height: 70,
+    borderRadius: 12,
+  },
+  completedLabel: {
+    fontSize: 10,
+    color: "#777",
+    textAlign: "right",
+  },
   emptyLearning: {
-    backgroundColor: "#f6f6f6",
+    backgroundColor: "#fff",
     padding: 25,
-    borderRadius: 18,
+    borderRadius: 23,
     alignItems: "center",
     gap: 12,
   },
@@ -1227,28 +1457,37 @@ const s = StyleSheet.create({
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     padding: 18,
-    borderBottomWidth: 1,
-    borderColor: "#edf0e8",
+    backgroundColor: "#fff",
+    borderRadius: 17,
+    marginBottom: 8,
   },
-  rankName: { fontSize: 14, color: "#222222" },
-  rankPoints: { fontSize: 12, color: "#756316" },
+  rankName: {
+    fontSize: 14,
+    color: "#222222",
+  },
+  rankPoints: {
+    fontSize: 12,
+    color: "#756316",
+  },
   root: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#F6F4EF",
     width: "100%",
     height: "100%",
-    maxWidth: 540,
+    maxWidth: 500,
     alignSelf: "center",
     marginHorizontal: "auto",
   },
   header: {
     paddingHorizontal: 22,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingTop: 18,
+    paddingBottom: 20,
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#FFDA00",
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   brand: {
     fontSize: 25,
@@ -1256,33 +1495,55 @@ const s = StyleSheet.create({
     textAlign: "right",
     color: "#101713",
   },
-  tagline: { fontSize: 10, color: "#777", textAlign: "right", marginTop: 1 },
-  pill: { backgroundColor: "#fff6bf", padding: 8, borderRadius: 20 },
-  pillText: { fontSize: 10, color: "#685900" },
-  demo: { backgroundColor: "#f5f5ef", padding: 7 },
-  demoText: { fontSize: 10, textAlign: "center", color: "#737568" },
-  content: { paddingHorizontal: 22, paddingTop: 8, paddingBottom: 36 },
-  kicker: {
-    fontSize: 13,
-    color: "#707070",
+  tagline: {
+    fontSize: 10,
+    color: "#655823",
     textAlign: "right",
-    marginTop: 8,
-    marginBottom: 5,
+    marginTop: 2,
+  },
+  pill: {
+    backgroundColor: "#fff6bf",
+    padding: 8,
+    borderRadius: 20,
+  },
+  pillText: {
+    fontSize: 10,
+    color: "#685900",
+  },
+  demo: {
+    backgroundColor: "#f5f5ef",
+    padding: 7,
+  },
+  demoText: {
+    fontSize: 10,
+    textAlign: "center",
+    color: "#737568",
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
+  kicker: {
+    fontSize: 12,
+    color: "#969084",
+    textAlign: "right",
+    marginBottom: 4,
   },
   heroTitle: {
-    fontSize: 31,
+    fontSize: 27,
     fontWeight: "800",
     textAlign: "right",
-    color: "#141414",
-    marginBottom: 12,
+    color: "#242421",
+    marginBottom: 9,
     marginTop: 2,
   },
   body: {
-    fontSize: 14,
-    color: "#626262",
-    lineHeight: 25,
+    fontSize: 13,
+    color: "#858179",
+    lineHeight: 24,
     textAlign: "right",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   photo: {
     width: "100%",
@@ -1297,13 +1558,18 @@ const s = StyleSheet.create({
     marginTop: 16,
     overflow: "hidden",
   },
-  cardContent: { padding: 18 },
+  cardContent: {
+    padding: 18,
+    backgroundColor: "#fff",
+    borderRadius: 22,
+    marginBottom: 12,
+  },
   title: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: "700",
     textAlign: "right",
-    color: "#171717",
-    marginBottom: 10,
+    color: "#33332E",
+    marginBottom: 8,
   },
   badge: {
     fontSize: 11,
@@ -1313,65 +1579,71 @@ const s = StyleSheet.create({
   },
   dots: {
     flexDirection: "row-reverse",
-    gap: 6,
+    gap: 5,
     justifyContent: "center",
-    marginTop: 16,
-    marginBottom: 4,
+    marginTop: 11,
+    marginBottom: 2,
   },
   dot: {
-    width: 10,
-    height: 8,
-    borderRadius: 6,
-    backgroundColor: "#ddd",
-    minHeight: 8,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#D7D3C9",
   },
-  dotActive: { backgroundColor: "#171717", width: 28 },
+  dotActive: {
+    backgroundColor: "#E7BB19",
+    width: 19,
+  },
   sectionTitle: {
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: "700",
     textAlign: "right",
-    marginTop: 0,
-    marginBottom: 0,
-    color: "#151515",
+    color: "#373631",
   },
   caption: {
-    fontSize: 11,
-    lineHeight: 20,
-    color: "#7d867e",
+    fontSize: 10,
+    lineHeight: 19,
+    color: "#A39D91",
     textAlign: "right",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   callout: {
-    backgroundColor: "#ffda00",
-    padding: 20,
-    borderRadius: 18,
-    marginTop: 24,
+    backgroundColor: "#FFE7A1",
+    padding: 22,
+    borderRadius: 25,
+    marginTop: 20,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
   button: {
-    backgroundColor: "#ffda00",
+    backgroundColor: "#FFDA00",
     padding: 15,
-    borderRadius: 12,
+    borderRadius: 16,
     marginVertical: 8,
   },
-  secondary: { backgroundColor: "#f0f3ec" },
+  secondary: {
+    backgroundColor: "#fff",
+  },
   buttonText: {
     fontSize: 14,
     fontWeight: "700",
     textAlign: "center",
-    color: "#172b1f",
+    color: "#544A26",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#dce2d8",
-    borderRadius: 12,
-    padding: 14,
+    borderColor: "#E9E4D9",
+    borderRadius: 16,
+    padding: 15,
     textAlign: "right",
     fontSize: 15,
-    color: "#203627",
+    color: "#454238",
     marginVertical: 10,
     backgroundColor: "#fff",
   },
-  textarea: { minHeight: 100, textAlignVertical: "top" },
+  textarea: {
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
   label: {
     fontSize: 13,
     fontWeight: "700",
@@ -1388,25 +1660,43 @@ const s = StyleSheet.create({
   role: {
     padding: 10,
     borderWidth: 1,
-    borderColor: "#e1e4dc",
-    borderRadius: 8,
+    borderColor: "#E5E0D6",
+    borderRadius: 13,
+    backgroundColor: "#fff",
   },
-  roleActive: { backgroundColor: "#fff4b0", borderColor: "#e0bf00" },
-  small: { fontSize: 11 },
+  roleActive: {
+    backgroundColor: "#FFF0A5",
+    borderColor: "#ECD668",
+  },
+  small: {
+    fontSize: 11,
+  },
   tabs: {
     flexDirection: "row-reverse",
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderWidth: 1,
-    borderColor: "#ededed",
+    paddingTop: 9,
+    paddingBottom: 9,
     backgroundColor: "#fff",
     borderRadius: 25,
-    boxShadow: "0px 6px 28px rgba(0,0,0,0.10)",
+    boxShadow: "0px 3px 24px rgba(45, 37, 25, 0.07)",
   },
-  tab: { flex: 1, alignItems: "center", gap: 4, minHeight: 58 },
-  tabText: { fontSize: 11, color: "#737373" },
-  tabIcon: { fontSize: 24, color: "#7b847a" },
-  active: { color: "#111", fontWeight: "800" },
+  tab: {
+    flex: 1,
+    alignItems: "center",
+    gap: 5,
+    minHeight: 54,
+  },
+  tabText: {
+    fontSize: 10,
+    color: "#AAA69D",
+  },
+  tabIcon: {
+    fontSize: 24,
+    color: "#7b847a",
+  },
+  active: {
+    color: "#80670E",
+    fontWeight: "800",
+  },
   link: {
     textAlign: "right",
     fontSize: 13,
@@ -1414,23 +1704,27 @@ const s = StyleSheet.create({
     color: "#667a38",
   },
   info: {
-    backgroundColor: "#f6f6f6",
+    backgroundColor: "#EEECE4",
     padding: 15,
     textAlign: "right",
     fontSize: 12,
-    color: "#454545",
+    color: "#817969",
     lineHeight: 23,
     marginVertical: 10,
-    borderRadius: 10,
+    borderRadius: 17,
   },
   score: {
-    fontSize: 65,
+    fontSize: 58,
     fontWeight: "800",
-    color: "#161616",
+    color: "#75602C",
     textAlign: "right",
     marginBottom: 10,
   },
-  modalHeader: { paddingHorizontal: 20, alignItems: "flex-start" },
+  modalHeader: {
+    paddingHorizontal: 20,
+    alignItems: "flex-start",
+    backgroundColor: "#F6F4EF",
+  },
   reading: {
     fontSize: 18,
     lineHeight: 34,
@@ -1443,5 +1737,39 @@ const s = StyleSheet.create({
     backgroundColor: "#f7f8f3",
     borderRadius: 12,
     marginTop: 12,
+  },
+  homeSummary: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 21,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
+  },
+  summaryIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: "#FFF3D9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "right",
+    color: "#3F3D36",
+    marginBottom: 5,
+  },
+  summaryCopy: {
+    fontSize: 10,
+    color: "#A09B90",
+    textAlign: "right",
+  },
+  homeRail: {
+    flexDirection: "row-reverse",
+    gap: 13,
+    paddingBottom: 8,
   },
 });

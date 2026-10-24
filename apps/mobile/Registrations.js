@@ -53,7 +53,11 @@ function Text({ style, ...props }) {
     <NativeText
       {...props}
       style={[
-        { fontFamily: "Tajawal", textAlign: "right", color: "#171717" },
+        {
+          fontFamily: "Tajawal",
+          textAlign: "right",
+          color: "#171717",
+        },
         style,
       ]}
     />
@@ -65,7 +69,13 @@ function Action({ children, onPress, disabled, secondary }) {
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={[s.action, secondary && s.secondary, disabled && { opacity: 0.4 }]}
+      style={[
+        s.action,
+        secondary && s.secondary,
+        disabled && {
+          opacity: 0.4,
+        },
+      ]}
     >
       <Text style={s.actionText}>{children}</Text>
     </Pressable>
@@ -167,7 +177,10 @@ export default function Registrations({ content, user, onDone }) {
     setDetails({
       ...blank(user),
       ...(ownRecords.some((r) => r.activityId === a.id)
-        ? { firstName: "", lastName: "" }
+        ? {
+            firstName: "",
+            lastName: "",
+          }
         : {}),
     });
     setConsent(false);
@@ -185,8 +198,16 @@ export default function Registrations({ content, user, onDone }) {
             lastName: value.trim().split(/\s+/).slice(1).join(" "),
           }
         : {}),
-      ...(key === "city" ? { address: value } : {}),
-      ...(key === "gender" ? { tentNumber: "" } : {}),
+      ...(key === "city"
+        ? {
+            address: value,
+          }
+        : {}),
+      ...(key === "gender"
+        ? {
+            tentNumber: "",
+          }
+        : {}),
       ...(key === "dob" &&
       ageAt(
         value,
@@ -218,7 +239,9 @@ export default function Registrations({ content, user, onDone }) {
     }
     const error = tentError(activity, details);
     if (error) {
-      setErrors({ tentNumber: error });
+      setErrors({
+        tentNumber: error,
+      });
       return;
     }
     if (
@@ -335,12 +358,21 @@ export default function Registrations({ content, user, onDone }) {
         ].map(([id, label]) => (
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{ selected: filter === id }}
+            accessibilityState={{
+              selected: filter === id,
+            }}
             key={id}
             onPress={() => setFilter(id)}
             style={[s.filter, filter === id && s.filterActive]}
           >
-            <Text style={[s.filterText, filter === id && { color: "#111" }]}>
+            <Text
+              style={[
+                s.filterText,
+                filter === id && {
+                  color: "#111",
+                },
+              ]}
+            >
               {label}
             </Text>
           </Pressable>
@@ -471,9 +503,18 @@ export default function Registrations({ content, user, onDone }) {
                   style={[s.card, a.kind === "camp" && s.campCard]}
                 >
                   {a.kind === "camp" ? (
-                    <CampPoster activity={a} logo={content.branding?.logo} />
+                    <CampPoster
+                      activity={a}
+                      logo={content.branding?.logo}
+                      compact
+                    />
                   ) : (
-                    <Image source={{ uri: uri(a.image) }} style={s.photo} />
+                    <Image
+                      source={{
+                        uri: uri(a.image),
+                      }}
+                      style={s.photo}
+                    />
                   )}
                   <View
                     style={[s.cardBody, a.kind === "camp" && s.campCardBody]}
@@ -637,7 +678,12 @@ export default function Registrations({ content, user, onDone }) {
                   </>
                 )}
                 <View style={s.progress}>
-                  {Array.from({ length: successStep }, (_, i) => i).map((i) => (
+                  {Array.from(
+                    {
+                      length: successStep,
+                    },
+                    (_, i) => i,
+                  ).map((i) => (
                     <View
                       key={i}
                       style={[s.progressPart, i <= step && s.progressActive]}
@@ -660,12 +706,22 @@ export default function Registrations({ content, user, onDone }) {
                     </Text>
                     {isCamp ? (
                       <CampIdentity
-                        {...{ activity, details, update, errors, field }}
+                        {...{
+                          activity,
+                          details,
+                          update,
+                          errors,
+                          field,
+                        }}
                       />
                     ) : (
                       <>
-                        {field("firstName", "الاسم الأول", { maxLength: 50 })}
-                        {field("lastName", "اسم العائلة", { maxLength: 50 })}
+                        {field("firstName", "الاسم الأول", {
+                          maxLength: 50,
+                        })}
+                        {field("lastName", "اسم العائلة", {
+                          maxLength: 50,
+                        })}
                       </>
                     )}
                     {field("email", "البريد الإلكتروني", {
@@ -732,7 +788,13 @@ export default function Registrations({ content, user, onDone }) {
                 {isCamp && step === 1 && (
                   <>
                     <CampExtra
-                      {...{ activity, details, update, errors, field }}
+                      {...{
+                        activity,
+                        details,
+                        update,
+                        errors,
+                        field,
+                      }}
                       onImage={chooseId}
                     />
                     <Action onPress={nextCampExtra}>
@@ -813,7 +875,9 @@ export default function Registrations({ content, user, onDone }) {
                                       s.tentTile,
                                       details.tentNumber === String(t.number) &&
                                         s.tentSelected,
-                                      free === 0 && { opacity: 0.4 },
+                                      free === 0 && {
+                                        opacity: 0.4,
+                                      },
                                     ]}
                                   >
                                     <Ionicons
@@ -868,7 +932,9 @@ export default function Registrations({ content, user, onDone }) {
                       <Pressable
                         accessibilityRole="checkbox"
                         accessibilityLabel={label}
-                        accessibilityState={{ checked: details[key] }}
+                        accessibilityState={{
+                          checked: details[key],
+                        }}
                         key={key}
                         onPress={() => update(key, !details[key])}
                         style={s.checkRow}
@@ -953,7 +1019,9 @@ export default function Registrations({ content, user, onDone }) {
                     <Pressable
                       accessibilityRole="checkbox"
                       accessibilityLabel="أوافق على تعليمات المشاركة"
-                      accessibilityState={{ checked: consent }}
+                      accessibilityState={{
+                        checked: consent,
+                      }}
                       onPress={() => setConsent(!consent)}
                       style={s.checkRow}
                     >
@@ -1081,7 +1149,9 @@ export default function Registrations({ content, user, onDone }) {
             <Action onPress={chooseReceipt}>اختيار صورة الوصل</Action>
             {receiptImage && (
               <Image
-                source={{ uri: receiptImage.uri }}
+                source={{
+                  uri: receiptImage.uri,
+                }}
                 accessibilityLabel="معاينة وصل الإيداع"
                 style={s.documentPreview}
               />
@@ -1196,19 +1266,27 @@ export default function Registrations({ content, user, onDone }) {
   );
 }
 const s = StyleSheet.create({
-  campCard: { borderRadius: 20, borderColor: "#e7e7e2" },
-  campCardBody: { padding: 16 },
+  campCard: {
+    borderRadius: 25,
+  },
+  campCardBody: {
+    padding: 17,
+  },
   inactiveCamp: {
     flexDirection: "row-reverse",
     justifyContent: "center",
     alignItems: "center",
     gap: 7,
     padding: 10,
-    borderRadius: 9,
-    backgroundColor: "#f1f1ed",
-    marginTop: 8,
+    borderRadius: 13,
+    backgroundColor: "#F7F5EF",
+    marginTop: 10,
   },
-  inactiveLabel: { fontFamily: "TajawalBold", fontSize: 12, color: "#555" },
+  inactiveLabel: {
+    fontFamily: "TajawalBold",
+    fontSize: 11,
+    color: "#A49A88",
+  },
   groupHeading: {
     fontFamily: "TajawalBold",
     fontSize: 18,
@@ -1232,6 +1310,7 @@ const s = StyleSheet.create({
     fontSize: 17,
     fontFamily: "TajawalBold",
     marginBottom: 12,
+    color: "#514C41",
   },
   tentGrid: {
     flexDirection: "row-reverse",
@@ -1241,76 +1320,141 @@ const s = StyleSheet.create({
   },
   tentTile: {
     width: "30%",
-    minHeight: 105,
+    minHeight: 106,
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 15,
+    borderColor: "#E7E0D2",
+    borderRadius: 18,
     padding: 12,
     alignItems: "center",
     gap: 6,
   },
-  tentSelected: { backgroundColor: "#ffda00", borderColor: "#ffda00" },
-  tentNumber: { fontSize: 23, fontFamily: "TajawalBold" },
-  tentMeta: { fontSize: 10, color: "#666" },
-  draftOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  eyebrow: { fontSize: 13, color: "#777", marginTop: 12 },
-  heading: { fontSize: 29, fontFamily: "TajawalBold", marginVertical: 12 },
-  body: { fontSize: 14, lineHeight: 25, color: "#646464", marginBottom: 10 },
+  tentSelected: {
+    backgroundColor: "#FFE79A",
+    borderColor: "#EBC862",
+  },
+  tentNumber: {
+    fontSize: 23,
+    fontFamily: "TajawalBold",
+  },
+  tentMeta: {
+    fontSize: 10,
+    color: "#666",
+  },
+  draftOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  eyebrow: {
+    fontSize: 12,
+    color: "#A09A8E",
+    marginBottom: 3,
+  },
+  heading: {
+    fontSize: 27,
+    fontFamily: "TajawalBold",
+    marginTop: 6,
+    marginBottom: 12,
+    color: "#35332C",
+  },
+  body: {
+    fontSize: 13,
+    lineHeight: 24,
+    color: "#928B7E",
+    marginBottom: 9,
+  },
   filters: {
     flexDirection: "row-reverse",
-    gap: 5,
+    gap: 6,
     flexWrap: "wrap",
-    marginVertical: 15,
-  },
-  filter: {
-    paddingHorizontal: 11,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#f3f3f3",
-  },
-  filterActive: { backgroundColor: "#ffda00" },
-  filterText: { fontSize: 11, color: "#666" },
-  card: {
-    borderWidth: 1,
-    borderColor: "#eee",
-    borderRadius: 22,
-    overflow: "hidden",
+    marginTop: 12,
     marginBottom: 20,
   },
-  photo: { width: "100%", height: 175 },
-  cardBody: { padding: 18 },
+  filter: {
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+  },
+  filterActive: {
+    backgroundColor: "#FFE58D",
+  },
+  filterText: {
+    fontSize: 11,
+    color: "#9B9589",
+  },
+  card: {
+    borderRadius: 25,
+    overflow: "hidden",
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
+  },
+  photo: {
+    width: "100%",
+    height: 175,
+  },
+  cardBody: {
+    padding: 17,
+  },
   cardTop: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     marginBottom: 12,
   },
-  kind: { fontSize: 12, fontFamily: "TajawalBold", color: "#8c7100" },
-  slot: { fontSize: 11, color: "#666" },
-  title: { fontSize: 20, fontFamily: "TajawalBold", marginVertical: 10 },
-  meta: { fontSize: 12, color: "#777", lineHeight: 22 },
+  kind: {
+    fontSize: 11,
+    fontFamily: "TajawalBold",
+    color: "#C28F44",
+  },
+  slot: {
+    fontSize: 10,
+    color: "#A49C8D",
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: "TajawalBold",
+    marginVertical: 10,
+    color: "#3C3931",
+  },
+  meta: {
+    fontSize: 11,
+    color: "#A0988B",
+    lineHeight: 21,
+  },
   action: {
     padding: 15,
-    borderRadius: 13,
-    backgroundColor: "#ffda00",
+    borderRadius: 15,
+    backgroundColor: "#FFDA00",
     marginVertical: 7,
   },
-  secondary: { backgroundColor: "#f1f1f1" },
-  actionText: { textAlign: "center", fontSize: 14, fontFamily: "TajawalBold" },
+  secondary: {
+    backgroundColor: "#F0EDE4",
+  },
+  actionText: {
+    textAlign: "center",
+    fontSize: 14,
+    fontFamily: "TajawalBold",
+    color: "#554A29",
+  },
   registration: {
     padding: 20,
-    borderWidth: 1,
-    borderColor: "#e9e9e9",
-    borderRadius: 20,
-    marginBottom: 16,
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    marginBottom: 15,
+    boxShadow: "0px 4px 18px rgba(52, 39, 22, 0.055)",
   },
   status: {
     flexDirection: "row-reverse",
     gap: 7,
     alignItems: "center",
-    backgroundColor: "#fff5bb",
+    backgroundColor: "#FFF2C9",
     alignSelf: "flex-end",
     padding: 8,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   note: {
     fontSize: 11,
@@ -1321,47 +1465,77 @@ const s = StyleSheet.create({
   },
   modal: {
     flex: 1,
-    backgroundColor: "#fff",
-    maxWidth: 540,
+    backgroundColor: "#F6F4EF",
+    maxWidth: 500,
     width: "100%",
     alignSelf: "center",
   },
-  modalContent: { padding: 22, paddingBottom: 50 },
+  modalContent: {
+    padding: 22,
+    paddingBottom: 50,
+  },
   modalBar: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  progress: { flexDirection: "row-reverse", gap: 6, marginBottom: 24 },
+  progress: {
+    flexDirection: "row-reverse",
+    gap: 6,
+    marginBottom: 24,
+  },
   progressPart: {
     flex: 1,
     height: 5,
     backgroundColor: "#eee",
     borderRadius: 3,
   },
-  progressActive: { backgroundColor: "#ffda00" },
-  label: { fontSize: 13, fontFamily: "TajawalBold", marginTop: 15 },
+  progressActive: {
+    backgroundColor: "#ffda00",
+  },
+  label: {
+    fontSize: 12,
+    fontFamily: "TajawalBold",
+    marginTop: 17,
+    color: "#726A5D",
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    padding: 14,
+    borderColor: "#E6E0D4",
+    borderRadius: 15,
+    padding: 15,
     textAlign: "right",
     fontFamily: "Tajawal",
     fontSize: 15,
+    marginTop: 8,
+    color: "#514A3E",
+    backgroundColor: "#fff",
+  },
+  errorInput: {
+    borderColor: "#ad3224",
+  },
+  error: {
+    fontSize: 12,
+    lineHeight: 22,
+    color: "#ad3224",
     marginTop: 7,
-    color: "#171717",
   },
-  errorInput: { borderColor: "#ad3224" },
-  error: { fontSize: 12, lineHeight: 22, color: "#ad3224", marginTop: 7 },
-  choices: { flexDirection: "row-reverse", gap: 9, marginVertical: 12 },
+  choices: {
+    flexDirection: "row-reverse",
+    gap: 9,
+    marginVertical: 12,
+  },
   choice: {
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#E8E1D3",
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
   },
-  choiceActive: { backgroundColor: "#ffda00", borderColor: "#ffda00" },
+  choiceActive: {
+    backgroundColor: "#FFEB9F",
+    borderColor: "#EFD573",
+  },
   checkRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
@@ -1373,25 +1547,33 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     gap: 18,
     borderBottomWidth: 1,
-    borderColor: "#eee",
-    paddingVertical: 13,
+    borderColor: "#EAE5DB",
+    paddingVertical: 14,
   },
-  summaryValue: { flex: 1, fontSize: 14 },
-  info: {
-    backgroundColor: "#f5f5f5",
-    padding: 17,
-    borderRadius: 13,
+  summaryValue: {
+    flex: 1,
     fontSize: 13,
+    color: "#645C4E",
+  },
+  info: {
+    backgroundColor: "#EEEAE0",
+    padding: 17,
+    borderRadius: 17,
+    fontSize: 12,
     lineHeight: 24,
     marginVertical: 15,
+    color: "#877D6C",
   },
-  success: { alignItems: "center", paddingVertical: 30 },
+  success: {
+    alignItems: "center",
+    paddingVertical: 30,
+  },
   reference: {
-    fontSize: 21,
+    fontSize: 20,
     fontFamily: "TajawalBold",
     padding: 18,
-    backgroundColor: "#fff4b7",
-    borderRadius: 12,
+    backgroundColor: "#FFF0BA",
+    borderRadius: 16,
   },
   overlay: {
     flex: 1,
@@ -1400,8 +1582,8 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,.5)",
   },
   dialog: {
-    padding: 24,
-    borderRadius: 24,
+    padding: 25,
+    borderRadius: 27,
     backgroundColor: "#fff",
     width: "100%",
     maxWidth: 480,

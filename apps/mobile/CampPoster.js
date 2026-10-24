@@ -19,6 +19,42 @@ export default function CampPoster({ activity, logo, compact = false }) {
       ? `${activity.minAge}–${activity.maxAge}`
       : "";
   const circle = compact ? 190 : 272;
+  if (compact)
+    return (
+      <View style={s.previewCard}>
+        <Image
+          source={{ uri: imageUri(activity.image) }}
+          style={s.previewPhoto}
+        />
+        <LinearGradient
+          colors={["rgba(0,0,0,.05)", "rgba(0,0,0,.78)"]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[s.previewTag, { backgroundColor: color }]}>
+          <Text style={s.previewTagText}>{word}</Text>
+        </View>
+        <View style={s.previewLogoBox}>
+          <Image
+            source={
+              logo
+                ? { uri: logo }
+                : require("../admin/public/media/spark-logo.png")
+            }
+            style={s.previewLogo}
+          />
+        </View>
+        <View style={s.previewCopy}>
+          <Text style={s.previewTitle}>{activity.title.split(" · ")[0]}</Text>
+          <Text style={s.previewGrade}>
+            {activity.gradeLabel
+              ? displayRange(activity.gradeLabel)
+              : activity.useAgeLimits
+                ? displayRange(`للأعمار ${activity.minAge}–${activity.maxAge}`)
+                : "مجتمع سبارك"}
+          </Text>
+        </View>
+      </View>
+    );
   return (
     <View style={[s.poster, { height: compact ? 330 : 442 }]}>
       <LinearGradient
@@ -116,6 +152,47 @@ export default function CampPoster({ activity, logo, compact = false }) {
   );
 }
 const s = StyleSheet.create({
+  previewCard: { height: 205, overflow: "hidden", backgroundColor: "#252525" },
+  previewPhoto: { width: "100%", height: "100%" },
+  previewTag: {
+    position: "absolute",
+    right: 16,
+    top: 15,
+    borderRadius: 9,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  previewTagText: {
+    fontFamily: "TajawalBold",
+    color: "#fff",
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  previewLogoBox: {
+    position: "absolute",
+    left: 15,
+    top: 15,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: "#fff",
+    padding: 3,
+  },
+  previewLogo: { width: "100%", height: "100%", resizeMode: "contain" },
+  previewCopy: { position: "absolute", bottom: 18, left: 20, right: 20 },
+  previewTitle: {
+    fontFamily: "TajawalBold",
+    fontSize: 24,
+    color: "#fff",
+    textAlign: "right",
+    marginBottom: 7,
+  },
+  previewGrade: {
+    fontFamily: "Tajawal",
+    fontSize: 12,
+    color: "#ffffffdc",
+    textAlign: "right",
+  },
   poster: {
     overflow: "hidden",
     backgroundColor: "#f5f5f2",
