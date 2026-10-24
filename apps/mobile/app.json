@@ -30,6 +30,7 @@
           "microphonePermission": false
         }
       ]
-    ]
+    ],
+    "icon": "../admin/public/media/spark-logo.png"
   }
 }
