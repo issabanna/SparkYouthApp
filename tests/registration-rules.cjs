@@ -19,6 +19,7 @@ const details = {
   email: "demo@example.com",
   gender: "male",
   age: "16",
+  dob: (() => { const date = new Date(activity.startDate || activity.date || new Date().toISOString().slice(0,10)); date.setUTCFullYear(date.getUTCFullYear()-16); return date.toISOString().slice(0,10); })(),
   phone: "0790000000",
   address: "مدينة تجريبية",
   registrationRole: "camper",

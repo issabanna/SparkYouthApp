@@ -902,21 +902,6 @@ export default function Dashboard() {
                     </label>
                     <fieldset className="campSettings">
                       <legend>تفاصيل المواعيد والمشاركة</legend>
-                      {[
-                        ["startDate", "تاريخ البداية", "date"],
-                        ["endDate", "تاريخ النهاية", "date"],
-                        ["departureTime", "وقت المغادرة", "datetime-local"],
-                        ["arrivalTime", "وقت الوصول", "datetime-local"],
-                      ].map(([key, label, type]) => (
-                        <label key={key}>
-                          {label}
-                          <input
-                            type={type}
-                            value={draft[key] || ""}
-                            onChange={(e) => change(key, e.target.value)}
-                          />
-                        </label>
-                      ))}
                       <label>
                         الرسوم
                         <input

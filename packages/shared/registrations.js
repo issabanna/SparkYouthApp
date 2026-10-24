@@ -197,7 +197,7 @@ function validateDetails(d, a, stage = "all") {
   if (a.registrationTestMode === true) {
     if (stage !== "extra" &&
         (a.tentsEnabled || a.registrationMode === "waitingList") &&
-        !["male", "female", "other"].includes(d.gender))
+        !["male", "female"].includes(d.gender))
       errors.gender = "اختر الجنس لعرض الخيام المناسبة.";
     return errors;
   }
@@ -213,7 +213,7 @@ function validateDetails(d, a, stage = "all") {
     errors.lastName = "أدخل اسم العائلة (حتى 50 حرفًا).";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || ""))
     errors.email = "أدخل بريدًا إلكترونيًا صحيحًا.";
-  if (!["male", "female", "other"].includes(d.gender))
+  if (!["male", "female"].includes(d.gender))
     errors.gender = "اختر الجنس.";
   if (!/^\d{10}$/.test(d.phone || ""))
     errors.phone = "أدخل رقم هاتف من 10 أرقام.";
@@ -226,7 +226,7 @@ function validateDetails(d, a, stage = "all") {
   if (a.kind !== "camp" && !d.address?.trim())
     errors.address = "أدخل المدينة أو العنوان.";
   const today = new Date().toISOString().slice(0, 10);
-  if (a.kind === "camp") {
+  {
     if (!validDate(d.dob || "") || d.dob > today)
       errors.dob = "أدخل تاريخ ميلاد صحيحًا بصيغة YYYY-MM-DD.";
     else if ((a.dobMin && d.dob < a.dobMin) || (a.dobMax && d.dob > a.dobMax))

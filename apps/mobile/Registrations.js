@@ -11,6 +11,7 @@ import {
   Platform,
   StyleSheet,
 } from "react-native";
+import BirthDatePicker from "./BirthDatePicker";
 import CampPoster from "./CampPoster";
 import MediaImage from "./MediaImage";
 import QRCode from "react-native-qrcode-svg";
@@ -87,8 +88,6 @@ const blank = (user) => ({
   phone: "",
   address: "",
   registrationRole: "camper",
-  meals: false,
-  transport: false,
   tentNumber: "",
   dob: "",
   arabicFullName: "",
@@ -136,9 +135,10 @@ export default function Registrations({ content, user, onDone }) {
   })),
     activity = activities.find((a) => a.id === activityId);
   const isCamp = activity?.kind === "camp",
-    servicesStep = isCamp ? 2 : 1,
-    reviewIndex = isCamp ? 3 : 2,
-    successStep = isCamp ? 4 : 3;
+    hasTentStep = isCamp && (activity.tentsEnabled || activity.registrationMode === "waitingList"),
+    servicesStep = 2,
+    reviewIndex = isCamp ? (hasTentStep ? 3 : 2) : 1,
+    successStep = reviewIndex + 1;
   const ownRecords = records.filter((r) => r.ownerKey === ownerKey(user));
   const registrationGroup = (r) =>
     r.status === "Confirmed"
@@ -279,7 +279,7 @@ export default function Registrations({ content, user, onDone }) {
   const nextCampExtra = () => {
     const e = validateDetails(details, activity, "extra");
     setErrors(e);
-    if (!Object.keys(e).length) setStep(servicesStep);
+    if (!Object.keys(e).length) setStep(hasTentStep ? servicesStep : reviewIndex);
   };
   const chooseId = async () => {
     try {
@@ -742,30 +742,17 @@ export default function Registrations({ content, user, onDone }) {
                       autoCapitalize: "none",
                       maxLength: 120,
                     })}
-                    {field("age", "العمر", {
-                      keyboardType: "number-pad",
-                      maxLength: 2,
-                    })}
-                    {activity.kind === "camp" && (
-                      <>
-                        {field("dob", "تاريخ الميلاد (مطلوب)", {
-                          placeholder: "YYYY-MM-DD",
-                          maxLength: 10,
-                        })}
-                        {(activity.dobMin || activity.dobMax) && (
-                          <Text style={s.meta}>
-                            الميلاد المسموح: {activity.dobMin || "غير محدد"} —{" "}
-                            {activity.dobMax || "غير محدد"}
-                          </Text>
-                        )}
-                      </>
-                    )}
+                    <BirthDatePicker value={details.dob} minimum={activity.dobMin} maximum={activity.dobMax}
+                      onChange={date => update("dob", date)} error={errors.dob} />
+                    {!!details.dob && <Text style={s.meta}>العمر: {details.age} سنة</Text>}
+                    {(activity.dobMin || activity.dobMax) && <Text style={s.meta}>
+                      الميلاد المسموح: {activity.dobMin || "غير محدد"} — {activity.dobMax || "غير محدد"}
+                    </Text>}
                     <Text style={s.label}>الجنس</Text>
                     <View style={s.choices}>
                       {[
                         ["male", "ذكر"],
                         ["female", "أنثى"],
-                        ["other", "آخر"],
                       ].map(([v, t]) => (
                         <Pressable
                           accessibilityRole="button"
@@ -795,7 +782,7 @@ export default function Registrations({ content, user, onDone }) {
                     <Action onPress={next}>
                       {isCamp
                         ? "التالي: ولي الأمر والمعلومات الأخرى"
-                        : "التالي: الخدمات الاختيارية"}
+                        : "التالي: مراجعة الطلب"}
                     </Action>
                   </>
                 )}
@@ -812,14 +799,14 @@ export default function Registrations({ content, user, onDone }) {
                       onImage={chooseId}
                     />
                     <Action onPress={nextCampExtra}>
-                      التالي: الخيمة والخدمات
+                      {hasTentStep ? "التالي: اختيار الخيمة" : "التالي: مراجعة الطلب"}
                     </Action>
                     <Action secondary onPress={() => setStep(0)}>
                       السابق
                     </Action>
                   </>
                 )}
-                {step === servicesStep && (
+                {hasTentStep && step === servicesStep && (
                   <>
                     {activity.registrationMode === "waitingList" ? (
                       <>
@@ -934,33 +921,6 @@ export default function Registrations({ content, user, onDone }) {
                         </>
                       )
                     )}
-                    <Text style={s.title}>خدمات اختيارية</Text>
-                    <Text style={s.body}>
-                      حدّد احتياجاتك للمراجعة مع الإدارة. اختيار الخدمة لا يعني
-                      تأكيد توفرها.
-                    </Text>
-                    {[
-                      ["meals", "أحتاج وجبات"],
-                      ["transport", "أحتاج مواصلات"],
-                    ].map(([key, label]) => (
-                      <Pressable
-                        accessibilityRole="checkbox"
-                        accessibilityLabel={label}
-                        accessibilityState={{
-                          checked: details[key],
-                        }}
-                        key={key}
-                        onPress={() => update(key, !details[key])}
-                        style={s.checkRow}
-                      >
-                        <Ionicons
-                          name={details[key] ? "checkbox" : "square-outline"}
-                          size={24}
-                          color={details[key] ? "#171717" : "#999"}
-                        />
-                        <Text>{label}</Text>
-                      </Pressable>
-                    ))}
                     <Action onPress={reviewStep}>التالي: مراجعة الطلب</Action>
                     <Action secondary onPress={() => setStep(isCamp ? 1 : 0)}>
                       السابق
@@ -1017,11 +977,6 @@ export default function Registrations({ content, user, onDone }) {
                           : "مجانًا",
                       ],
                       ["العنوان", details.address],
-                      ["الوجبات", details.meals ? "مطلوبة" : "غير مطلوبة"],
-                      [
-                        "المواصلات",
-                        details.transport ? "مطلوبة" : "غير مطلوبة",
-                      ],
                     ].map(([k, v]) => (
                       <View key={k} style={s.summaryRow}>
                         <Text style={s.meta}>{k}</Text>
@@ -1052,7 +1007,7 @@ export default function Registrations({ content, user, onDone }) {
                     <Action disabled={!consent} onPress={submit}>
                       إرسال طلب التسجيل
                     </Action>
-                    <Action secondary onPress={() => setStep(servicesStep)}>
+                    <Action secondary onPress={() => setStep(hasTentStep ? servicesStep : isCamp ? 1 : 0)}>
                       السابق
                     </Action>
                   </>

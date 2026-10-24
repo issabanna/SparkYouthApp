@@ -22,7 +22,7 @@ const base=process.env.SPARK_TEST_URL||'http://localhost:3026';
   await acceptInstructions();
   await p.getByRole('button',{name:'ذكر',exact:true}).click();
   await p.getByRole('button',{name:'التالي: ولي الأمر والمعلومات الأخرى'}).click();
-  await p.getByRole('button',{name:'التالي: الخيمة والخدمات'}).click();
+  await p.getByRole('button',{name:'التالي: اختيار الخيمة'}).click();
   await p.getByRole('button',{name:'التالي: مراجعة الطلب'}).click();
   await p.getByText('اختر رقم الخيمة.',{exact:true}).waitFor();
   await p.getByRole('button',{name:'الخيمة 0',exact:true}).click();
