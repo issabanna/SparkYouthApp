@@ -41,3 +41,15 @@ After `npm run build`, start the production server on port 3004 with `npm run st
 ## Visual identity
 
 Mobile uses bundled Tajawal Arabic fonts, Ionicons navigation, Spark yellow/black/white, a fixed floating tab bar and progress rings. Fonts/icons are included in the web export rather than fetched from a third-party CDN. `public/media/camp.png` and `trail.png` are generated sample photographs, not photographs of actual Spark campers. `spark-logo.png` is a reference-based preview reconstruction of the logo supplied in chat; the original PNG/SVG is needed for exact official branding. It is embedded by default on mobile and admin; a locally uploaded logo still takes priority.
+
+## Camps, trips and event registrations
+
+The five mobile tabs are Home, Activities, Learn, Ranking and Account. Learning is labelled «تعلّم» with «مسارات التعلّم» inside the section. Activities have camp/trip/event filters plus My registrations. Admin manages activity type, age limits, capacity, external confirmed places, availability, waitlists and participation instructions.
+
+Registration collects participant details, an application role (camper or prospective leader), optional meal/transport requests, review and consent. Requests become Pending when capacity is available, otherwise Waiting if enabled. Pending does not reserve a place; admin approval consumes capacity. Duplicate active requests are blocked, and only Pending/Waiting requests can be cancelled. Leader applications do not grant account permissions. No email, payment, real booking or check-in is performed.
+
+Registrations are local preview records under `spark-event-registrations-v1`. Demo ownership uses the entered demo name, not an authenticated identity. Do not enter actual sensitive participant data. Browser-local validation is not transactional backend protection; secure authentication, persistent shared storage and server-side approval/capacity rules remain required. Native preview records currently remain in memory.
+
+A versioned migration preserves previously edited content and adds the sample camp/trip once to older preview data. Deleted samples do not reappear after migration.
+
+Run `node tests/registration-rules.cjs` for registration rules and migration checks. With the server running, `CHROMIUM_PATH=/usr/bin/chromium SPARK_TEST_URL=http://localhost:3008 npm run test:registrations` exercises registration, admin approval, waitlists and cancellation in Chromium.
