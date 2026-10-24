@@ -167,10 +167,7 @@ export default function Dashboard() {
           registrations.filter(
             (r) => r.activityId === draft.id && r.status === "Confirmed",
           ).length >
-          Number(draft.capacity) ||
-        Number(draft.minAge) < 1 ||
-        Number(draft.maxAge) > 99 ||
-        Number(draft.minAge) > Number(draft.maxAge))
+          Number(draft.capacity))
     ) {
       setMessage(
         "تحقق من السعة والأماكن المؤكدة والأعمار. لا يمكن خفض السعة عن عدد المؤكدين.",
@@ -191,6 +188,7 @@ export default function Dashboard() {
           ];
     }
     if (section === "activities") {
+      draft.useAgeLimits = false;
       const error = validateCampSettings(draft, registrations);
       if (error) {
         setMessage(error);
@@ -227,14 +225,16 @@ export default function Dashboard() {
       );
       return;
     }
-    if (window.confirm("هل تريد حذف هذا المحتوى؟"))
-      persist({
+    if (window.confirm("هل تريد حذف هذا المحتوى؟")) {
+      const removed = persist({
         ...content,
         [section]: content[section].filter((x) => x.id !== id),
         ...(section === "journeys"
           ? { comments: content.comments.filter((c) => c.journeyId !== id) }
           : {}),
       });
+      if (removed && cloud === 'remote') setMessage("تم الحذف من المسودة. اضغط «نشر التغييرات للتطبيق» لإزالته من التطبيق أيضًا.");
+    }
   };
   const move = (index, delta) => {
     const list = [...content[section]],
@@ -414,6 +414,14 @@ export default function Dashboard() {
                 onChange={e => persist({ ...content, registrationTestMode: e.target.checked })} />
               وضع تجربة التسجيل — جعل بيانات المشاركين اختيارية
             </label>
+            <section className="panel">
+              <h2>خيارات التسجيل المشتركة لجميع المخيمات</h2>
+              <p>تعديل هذه القوائم يطبّق على جميع المخيمات. خيار واحد في كل سطر؛ اترك المدن والمدارس فارغة للسماح بالكتابة الحرة.</p>
+              {[["cityOptions", "خيارات المدن"], ["schoolOptions", "خيارات المدارس"], ["shirtOptions", "مقاسات التيشيرت"]].map(([key, label]) => (
+                <label key={key}>{label}<textarea value={(content.registrationOptions?.[key] || []).join("\n")}
+                  onChange={e => persist(normalizeContent({ ...content, registrationOptions: { ...content.registrationOptions, [key]: [...new Set(e.target.value.split("\n"))] } }))} /></label>
+              ))}
+            </section>
             <div className="cards">
               {[
                 [
@@ -818,9 +826,6 @@ export default function Dashboard() {
                     </label>
                     {[
                       ["capacity", "السعة الكلية", 1, 10000],
-                      ["seatsTaken", "أماكن مؤكدة خارج المعاينة", 0, 10000],
-                      ["minAge", "الحد الأدنى للعمر", 1, 99],
-                      ["maxAge", "الحد الأعلى للعمر", 1, 99],
                     ].map(([key, label, min, max]) => (
                       <label key={key}>
                         {label}
@@ -833,6 +838,10 @@ export default function Dashboard() {
                           onChange={(e) => change(key, Number(e.target.value))}
                         />
                       </label>
+                    ))}
+                    {[["dobMin", "أقدم تاريخ ميلاد مسموح (الحد الأدنى)"], ["dobMax", "أحدث تاريخ ميلاد مسموح (الحد الأعلى)"]].map(([key, label]) => (
+                      <label key={key}>{label}<input type="date" value={draft[key] || ""}
+                        onChange={e => { change(key, e.target.value); }} /></label>
                     ))}
                     <label>
                       تعليمات المشاركة
@@ -1006,20 +1015,8 @@ export default function Dashboard() {
                             لإتاحة جميع الصفوف.
                           </small>
                         </label>
-                        <label className="checkbox">
-                          <input
-                            type="checkbox"
-                            checked={draft.useAgeLimits ?? true}
-                            onChange={(e) =>
-                              change("useAgeLimits", e.target.checked)
-                            }
-                          />{" "}
-                          تطبيق حدود العمر إضافةً إلى شروط الصف والميلاد
-                        </label>
                         {[
                           ["visitorsDate", "يوم الزيارة"],
-                          ["dobMin", "أقدم تاريخ ميلاد مسموح"],
-                          ["dobMax", "أحدث تاريخ ميلاد مسموح"],
                         ].map(([key, label]) => (
                           <label key={key}>
                             {label}
@@ -1064,9 +1061,6 @@ export default function Dashboard() {
                         ))}
                         {[
                           ["gradeOptions", "خيارات الصفوف"],
-                          ["cityOptions", "خيارات المدن"],
-                          ["schoolOptions", "خيارات المدارس"],
-                          ["shirtOptions", "مقاسات التيشيرت"],
                         ].map(([key, label]) => (
                           <label key={key}>
                             {label}
@@ -1112,7 +1106,6 @@ export default function Dashboard() {
                                   </small>
                                   {[
                                     ["capacity", "السعة"],
-                                    ["seatsTaken", "إشغال خارجي"],
                                   ].map(([key, label]) => (
                                     <label key={key}>
                                       {label} · الخيمة {t.number}

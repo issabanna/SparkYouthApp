@@ -12,7 +12,14 @@ const base=process.env.SPARK_TEST_URL||'http://localhost:3026';
  await p.getByRole('tab',{name:'الأنشطة',exact:true}).click();
  await p.getByRole('button',{name:'مخيمات',exact:true}).click();
  await p.getByRole('button',{name:'سجّل الآن',exact:false}).click();
+ async function acceptInstructions(){
+  const start=p.getByRole('button',{name:'بدء التسجيل',exact:true});
+  assert.equal(await start.isDisabled(),true);
+  await p.getByRole('checkbox',{name:'قرأت التعليمات وأوافق عليها'}).click();
+  await start.click();
+ }
  async function skipAndSubmit(){
+  await acceptInstructions();
   await p.getByRole('button',{name:'ذكر',exact:true}).click();
   await p.getByRole('button',{name:'التالي: ولي الأمر والمعلومات الأخرى'}).click();
   await p.getByRole('button',{name:'التالي: الخيمة والخدمات'}).click();
@@ -37,6 +44,7 @@ const base=process.env.SPARK_TEST_URL||'http://localhost:3026';
  await p.getByRole('tab',{name:'الأنشطة',exact:true}).click();
  await p.getByRole('button',{name:'مخيمات',exact:true}).click();
  await p.getByRole('button',{name:'سجّل مشاركًا آخر',exact:false}).click();
+ await acceptInstructions();
  await p.getByRole('button',{name:'ذكر',exact:true}).click();
  await p.getByRole('button',{name:'التالي: ولي الأمر والمعلومات الأخرى'}).click();
  await p.getByText('أدخل الاسم الثلاثي للمشارك.',{exact:true}).waitFor();

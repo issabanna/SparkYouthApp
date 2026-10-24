@@ -71,6 +71,8 @@ const defaultTents = () =>
   }));
 const normalizeActivity = (a) => {
   const result = { ...activityDefaults, ...a };
+  // All occupancy comes from app registrations; ignore legacy manual counts.
+  result.seatsTaken = 0;
   result.inactive = !!(a.inactive ?? a.preparing ?? false);
   result.registrationMode = ["standard", "waitingList", "closed"].includes(
     a.registrationMode,
@@ -88,6 +90,7 @@ const normalizeActivity = (a) => {
     ...a.tents?.find((x) => Number(x.number) === t.number),
     number: t.number,
     gender: t.gender,
+    seatsTaken: 0,
   }));
   return result;
 };

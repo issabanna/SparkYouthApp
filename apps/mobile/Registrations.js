@@ -109,7 +109,8 @@ export default function Registrations({ content, user, onDone }) {
   const [records, setRecords] = useState(read),
     [filter, setFilter] = useState("all"),
     [activityId, setActivityId] = useState(null),
-    [step, setStep] = useState(0),
+    [step, setStep] = useState(-1),
+    [instructionsAccepted, setInstructionsAccepted] = useState(false),
     [details, setDetails] = useState(() => blank(user)),
     [consent, setConsent] = useState(false),
     [errors, setErrors] = useState({}),
@@ -172,7 +173,8 @@ export default function Registrations({ content, user, onDone }) {
   };
   const open = (a) => {
     setActivityId(a.id);
-    setStep(0);
+    setStep(-1);
+    setInstructionsAccepted(false);
     setDetails({
       ...blank(user),
       ...(ownRecords.some((r) => r.activityId === a.id)
@@ -642,21 +644,20 @@ export default function Registrations({ content, user, onDone }) {
                   <Text style={s.kind}>
                     {step === successStep
                       ? "تم إرسال الطلب"
-                      : `الخطوة ${step + 1} من ${successStep}`}
+                      : `الخطوة ${step + 2} من ${successStep + 1}`}
                   </Text>
                 </View>
                 <Text style={s.heading}>{activity.title}</Text>
-                {step === 0 && activity.kind === "camp" && (
+                {step === -1 && activity.kind === "camp" && (
                   <Text style={s.body}>{activity.text}</Text>
                 )}
                 {!!activity.instructions && (
                   <Text style={s.info}>{activity.instructions}</Text>
                 )}
-                {step === 0 && (
+                {step === -1 && (
                   <>
-                    {!!activity.startInstructions && (
-                      <Text style={s.info}>{activity.startInstructions}</Text>
-                    )}
+                    <Text style={s.title}>تعليمات قبل البدء</Text>
+                    <Text style={s.info}>{activity.startInstructions || "يرجى مراجعة بيانات النشاط وتعليمات المشاركة قبل بدء التسجيل."}</Text>
                     {!!activity.visitorsDate && (
                       <Text style={s.meta}>
                         يوم الزيارة: {activity.visitorsDate}
@@ -682,16 +683,26 @@ export default function Registrations({ content, user, onDone }) {
                 <View style={s.progress}>
                   {Array.from(
                     {
-                      length: successStep,
+                      length: successStep + 1,
                     },
                     (_, i) => i,
                   ).map((i) => (
                     <View
                       key={i}
-                      style={[s.progressPart, i <= step && s.progressActive]}
+                      style={[s.progressPart, i <= step + 1 && s.progressActive]}
                     />
                   ))}
                 </View>
+                {step === -1 && (
+                  <>
+                    <Pressable accessibilityRole="checkbox" accessibilityState={{checked: instructionsAccepted}}
+                      onPress={() => setInstructionsAccepted(!instructionsAccepted)} style={s.checkRow}>
+                      <Ionicons name={instructionsAccepted ? "checkbox" : "square-outline"} size={25} color="#151515" />
+                      <Text style={s.body}>قرأت التعليمات وأوافق عليها</Text>
+                    </Pressable>
+                    <Action disabled={!instructionsAccepted} onPress={() => { if (instructionsAccepted) setStep(0); }}>بدء التسجيل</Action>
+                  </>
+                )}
                 {step === 0 && (
                   <>
                     <Text style={s.title}>بيانات المشارك</Text>
@@ -780,6 +791,7 @@ export default function Registrations({ content, user, onDone }) {
                       field("address", "المدينة أو العنوان", {
                         maxLength: 200,
                       })}
+                    <Action secondary onPress={() => setStep(-1)}>السابق: التعليمات</Action>
                     <Action onPress={next}>
                       {isCamp
                         ? "التالي: ولي الأمر والمعلومات الأخرى"

@@ -34,7 +34,7 @@ function validateContent(value) {
 }
 function publicContent(value) {
   const c=validateContent(value);
-  return {schemaVersion:c.schemaVersion,registrationTestMode:c.registrationTestMode,
+  return {schemaVersion:c.schemaVersion,registrationTestMode:c.registrationTestMode,registrationOptions:c.registrationOptions,
     ...(c.branding?{branding:{
       ...(typeof c.branding.logo==='string'?{logo:c.branding.logo}:{}),
       ...(typeof c.branding.welcomeImage==='string'?{welcomeImage:c.branding.welcomeImage}:{}),

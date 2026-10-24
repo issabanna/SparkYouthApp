@@ -243,8 +243,17 @@ exports.normalizeContent = (value) => {
         (a) => !activities.some((x) => x.id === a.id),
       ),
     ];
+  const registrationOptions = Object.fromEntries(
+    ["cityOptions", "schoolOptions", "shirtOptions"].map(key => {
+      const existing = [...new Set(activities.flatMap(a => a[key] || []))];
+      const options = Array.isArray(c.registrationOptions?.[key])
+        ? c.registrationOptions[key] : existing.length ? existing : exports.normalizeActivity({})[key];
+      return [key, options.filter(option => typeof option === "string")];
+    }),
+  );
   return {
     ...c,
+    registrationOptions,
     schemaVersion: exports.contentVersion,
     announcements: (c.announcements || []).map((a) =>
       a.id === "a1" && a.title === "موعدنا تحت النجوم"
@@ -272,13 +281,14 @@ exports.normalizeContent = (value) => {
         a.title === oldNames[a.id] && current
           ? {
               ...a,
+              ...registrationOptions,
               title: current.title,
               ...(current.brandTitle &&
               ["EXPLORE", "CHALLENGE", "LEAD"].includes(a.brandTitle)
                 ? { brandTitle: current.brandTitle }
                 : {}),
             }
-          : a,
+          : { ...a, ...registrationOptions },
       );
     }),
   };

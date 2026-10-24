@@ -165,14 +165,18 @@ export default function App() {
         if(!['activities','announcements','galleries','journeys'].every(key=>Array.isArray(value[key])))return;
         if(active)setContent(current=>{
           const next=normalizeContent(value);
+          try { save(storageKey, next); } catch {}
           // Preview reflections/comments remain local until camper accounts exist.
           return {...next,comments:(current.comments||[]).filter(comment=>next.journeys.some(j=>j.id===comment.journeyId))};
         });
       }catch{}finally{clearTimeout(timeout)}
     }
     refreshContent();
+    const refreshTimer = setInterval(refreshContent, 30000);
+    const onFocus = () => refreshContent();
+    if (Platform.OS === 'web') window.addEventListener('focus', onFocus);
     const listener=AppState.addEventListener('change',state=>{if(state==='active')refreshContent()});
-    return()=>{active=false;controller?.abort();listener.remove()};
+    return()=>{active=false;clearInterval(refreshTimer);if(Platform.OS==='web')window.removeEventListener('focus',onFocus);controller?.abort();listener.remove()};
   },[]);
   const [profile, setProfile] = useState(() =>
     load(sessionKey, {
