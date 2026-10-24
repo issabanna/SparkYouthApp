@@ -54,7 +54,7 @@ const activityDefaults = {
   terms:
     "ألتزم بتعليمات السلامة واحترام المشاركين. هذا نص تجريبي يحتاج اعتماد الإدارة.",
 };
-const kinds = { camp: "مخيم", trip: "رحلة", event: "فعالية" };
+const kinds = { camp: "مخيم", trip: "رحلة", training: "تدريب", conference: "مؤتمر", hike: "مسير مشي", event: "فعالية" };
 const statuses = {
   Pending: "قيد المراجعة",
   Confirmed: "مؤكد",

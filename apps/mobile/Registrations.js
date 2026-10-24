@@ -378,6 +378,9 @@ export default function Registrations({ content, user, onDone }) {
           ["all", "الكل"],
           ["camp", "مخيمات"],
           ["trip", "رحلات"],
+          ["training", "تدريب"],
+          ["conference", "مؤتمرات"],
+          ["hike", "مسارات مشي"],
           ["event", "فعاليات"],
           ["mine", "تسجيلاتي"],
         ].map(([id, label]) => (

@@ -739,6 +739,17 @@ export default function Dashboard() {
                     ? "تعديل المحتوى"
                     : "محتوى جديد"}
                 </h2>
+                {section === "activities" && <label>
+                  نوع النشاط
+                  <select value={draft.kind || "event"} onChange={e => change("kind",e.target.value)}>
+                    <option value="camp">مخيم · Camp</option>
+                    <option value="trip">رحلة · Trip</option>
+                    <option value="training">تدريب · Training</option>
+                    <option value="conference">مؤتمر · Conference</option>
+                    <option value="hike">مسير مشي · Hike</option>
+                    <option value="event">فعالية · Event</option>
+                  </select>
+                </label>}
                 <label>
                   العنوان
                   <input
@@ -811,17 +822,6 @@ export default function Dashboard() {
                         onChange={(e) => change("inactive", e.target.checked)}
                       />{" "}
                       غير فعّال: عرض التفاصيل دون إجراءات تسجيل
-                    </label>
-                    <label>
-                      نوع النشاط
-                      <select
-                        value={draft.kind || "event"}
-                        onChange={(e) => change("kind", e.target.value)}
-                      >
-                        <option value="camp">مخيم</option>
-                        <option value="trip">رحلة</option>
-                        <option value="event">فعالية</option>
-                      </select>
                     </label>
                     {[
                       ["capacity", "السعة الكلية", 1, 10000],
