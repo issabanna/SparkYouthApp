@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Spark Youth",
+    "slug": "spark-youth",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "app.sparkyouth.mobile"
+    },
+    "extra": {
+      "supportsRTL": true
+    }
+  }
+}

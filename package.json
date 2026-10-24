@@ -1,0 +1,13 @@
+{
+  "name": "spark-youth",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "admin": "npm run dev --workspace @spark/admin",
+    "mobile": "npm run start --workspace @spark/mobile",
+    "build": "npm run build --workspace @spark/admin"
+  }
+}
