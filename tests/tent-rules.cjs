@@ -213,3 +213,28 @@ assert.equal(
   ).records[0].status,
   "Confirmed",
 );
+
+// Repair the sample camp's old disabled default without changing custom camps
+// or undoing future admin choices. Existing requests are not rewritten.
+{
+  const { defaultContent, normalizeContent, contentVersion } = require('../packages/shared');
+  const sample = normalizeActivity(defaultContent.activities.find(c => c.id === 'camp-demo'));
+  assert.equal(sample.tentsEnabled, true);
+  const cached = {
+    schemaVersion: 4,
+    activities: [
+      { ...sample, tentsEnabled: false },
+      { ...sample, id: 'custom-camp', tentsEnabled: false },
+    ],
+  };
+  const migrated = normalizeContent(cached);
+  assert.equal(migrated.activities[0].tentsEnabled, true);
+  assert.equal(migrated.activities[1].tentsEnabled, false);
+  assert.equal(migrated.schemaVersion, contentVersion);
+  assert.equal(normalizeContent({
+    ...migrated,
+    activities: [{ ...sample, tentsEnabled: false }],
+  }).activities[0].tentsEnabled, false);
+  assert(submitRegistration(sample, { name: 'test' }, { ...d, tentNumber: '' }, [], true).error);
+  console.log('PASS: default and saved preview camp require a tent; custom camp settings and later admin opt-out are preserved.');
+}

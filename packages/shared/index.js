@@ -95,7 +95,7 @@ exports.sampleProgress = [
 ];
 
 Object.assign(exports, require("./registrations"));
-exports.contentVersion = 4;
+exports.contentVersion = 5;
 exports.defaultContent.schemaVersion = exports.contentVersion;
 Object.assign(exports.defaultContent.activities[0], {
   kind: "event",
@@ -109,6 +109,7 @@ Object.assign(exports.defaultContent.activities[0], {
 exports.defaultContent.activities.push(
   {
     id: "camp-demo",
+    tentsEnabled: true,
     title: "مخيم الشبيبة",
     text: "أيام من التخييم والمغامرة والتعاون، مع مساحة للنمو وتكوين صداقات جديدة.",
     date: "",
@@ -250,6 +251,10 @@ exports.normalizeContent = (value) => {
         : a,
     ),
     activities: activities.map((a) => {
+      // The open sample camp previously inherited tentsEnabled:false. Repair
+      // saved previews once; subsequent admin choices remain authoritative.
+      if ((value?.schemaVersion || 0) < 5 && a.id === "camp-demo")
+        a = { ...a, tentsEnabled: true };
       const oldNames = {
         "camp-demo": "مخيم سبارك · تحت النجوم",
         "spark-kids": "سبارك الصغار",

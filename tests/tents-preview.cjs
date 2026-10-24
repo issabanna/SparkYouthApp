@@ -1,6 +1,7 @@
 const { chromium } = require("playwright");
 const { fillCampParticipant, fillCampExtra } = require("./camp-fixtures.cjs");
 const assert = require("node:assert/strict");
+const { defaultContent, storageKey } = require("../packages/shared");
 const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
 (async () => {
   const browser = await chromium.launch({
@@ -13,6 +14,15 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
     });
+    // Reproduce the saved preview configuration that skipped tent selection.
+    await context.addInitScript(({ key, value }) => {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(value));
+    }, { key: storageKey, value: {
+      ...defaultContent,
+      schemaVersion: 4,
+      activities: defaultContent.activities.map(a => a.id === "camp-demo"
+        ? { ...a, tentsEnabled: false } : a),
+    } });
     const admin = await context.newPage(),
       page = await context.newPage();
     const errors = [];
@@ -35,7 +45,11 @@ const base = process.env.SPARK_TEST_URL || "http://localhost:3012";
         .click();
     };
     await editCamp();
-    await admin.getByLabel("تفعيل اختيار الخيمة أثناء التسجيل").check();
+    assert.equal(
+      await admin.getByLabel("تفعيل اختيار الخيمة أثناء التسجيل").isChecked(),
+      true,
+      "The default camp must offer tent selection without admin setup",
+    );
     await admin.getByLabel("السعة · الخيمة 0", { exact: true }).fill("1");
     await admin.getByLabel("السعة · الخيمة 7", { exact: true }).fill("1");
     await admin.getByLabel("تاريخ البداية", { exact: true }).fill("2027-07-01");
