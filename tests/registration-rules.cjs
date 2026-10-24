@@ -36,7 +36,7 @@ assert(
 );
 assert(
   submitRegistration(
-    { ...activity, registrationOpen: false },
+    { ...activity, registrationMode: "closed" },
     user,
     details,
     [],

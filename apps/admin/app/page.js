@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
+  validateCampSettings,
+  tentOccupancy,
+  tentAvailable,
+  eligibleTents,
   normalizeContent,
   registrationKey,
   statuses,
@@ -47,9 +51,12 @@ const emptyItem = (key) => ({
   ...(key === "journeys" ? { audience: "campers", prompt: "" } : {}),
 });
 const safeImage = (url) =>
-  url.startsWith("/media/") || /^https:\/\/[^\s]+$/.test(url);
+  url.startsWith("/media/") ||
+  /^data:image\/(png|jpeg|webp);base64,/.test(url) ||
+  /^https:\/\/[^\s]+$/.test(url);
 export default function Dashboard() {
   const [registrations, setRegistrations] = useState([]);
+  const [tentAssignments, setTentAssignments] = useState({});
   const [content, setContent] = useState(defaultContent),
     [section, setSection] = useState("overview"),
     [draft, setDraft] = useState(null),
@@ -125,6 +132,13 @@ export default function Dashboard() {
       );
       return;
     }
+    if (section === "activities") {
+      const error = validateCampSettings(draft, registrations);
+      if (error) {
+        setMessage(error);
+        return;
+      }
+    }
     if (!draft.title.trim() || !draft.text.trim()) return;
     const images = section === "galleries" ? draft.images : [draft.image];
     if (images.some((url) => !safeImage(url))) {
@@ -183,6 +197,7 @@ export default function Dashboard() {
         id,
         status,
         latestContent.activities,
+        tentAssignments[id],
       );
       if (result.error) {
         setMessage(result.error);
@@ -194,6 +209,21 @@ export default function Dashboard() {
     } catch {
       setMessage("تعذّر تحديث حالة الطلب.");
     }
+  };
+  const uploadActivityImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (
+      !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+      file.size > 500000
+    ) {
+      setMessage("اختر صورة PNG/JPEG/WebP أقل من 500 كيلوبايت للمعاينة.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => change("image", reader.result);
+    reader.onerror = () => setMessage("تعذّر قراءة الصورة.");
+    reader.readAsDataURL(file);
   };
   const uploadLogo = (e) => {
     const file = e.target.files?.[0];
@@ -352,7 +382,8 @@ export default function Dashboard() {
             <h2>مراجعة طلبات المشاركة</h2>
             <p>
               طلبات محلية في هذا المتصفح فقط. الموافقة تُحسب من السعة؛ الطلبات
-              المعلقة لا تحجز مقاعد.
+              المعلقة لا تحجز مقاعد المخيم العامة، لكنها تحجز أماكن الخيام عند
+              تفعيل اختيار الخيمة.
             </p>
             {registrations.map((r) => (
               <article key={r.id} style={{ marginBottom: 18 }}>
@@ -373,6 +404,12 @@ export default function Dashboard() {
                   · {r.details.meals ? "وجبات مطلوبة" : "بدون وجبات"} ·{" "}
                   {r.details.transport ? "مواصلات مطلوبة" : "بدون مواصلات"}
                 </p>
+                {r.details.tentNumber != null && (
+                  <p>
+                    الخيمة المطلوبة: {r.details.tentNumber}
+                    {r.status === "Waiting" ? " · تفضيل غير محجوز" : ""}
+                  </p>
+                )}
                 <details>
                   <summary>تفاصيل الطلب</summary>
                   <p>
@@ -382,6 +419,63 @@ export default function Dashboard() {
                 </details>
                 {["Pending", "Waiting"].includes(r.status) && (
                   <div className="actions">
+                    {r.status === "Waiting" &&
+                      normalizeActivity(
+                        content.activities.find((a) => a.id === r.activityId) ||
+                          {},
+                      ).tentsEnabled && (
+                        <label>
+                          تعيين خيمة · {r.reference}
+                          <select
+                            aria-label={`تعيين خيمة ${r.reference}`}
+                            value={tentAssignments[r.id] ?? ""}
+                            onChange={(e) =>
+                              setTentAssignments({
+                                ...tentAssignments,
+                                [r.id]: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">اختر خيمة متاحة</option>
+                            {eligibleTents(
+                              normalizeActivity(
+                                content.activities.find(
+                                  (a) => a.id === r.activityId,
+                                ),
+                              ),
+                              r.details.gender,
+                            ).map((t) => (
+                              <option
+                                key={t.number}
+                                value={t.number}
+                                disabled={
+                                  tentAvailable(
+                                    normalizeActivity(
+                                      content.activities.find(
+                                        (a) => a.id === r.activityId,
+                                      ),
+                                    ),
+                                    t.number,
+                                    registrations,
+                                  ) === 0
+                                }
+                              >
+                                الخيمة {t.number} ·{" "}
+                                {tentAvailable(
+                                  normalizeActivity(
+                                    content.activities.find(
+                                      (a) => a.id === r.activityId,
+                                    ),
+                                  ),
+                                  t.number,
+                                  registrations,
+                                )}{" "}
+                                متاح
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
                     <button
                       className="primary"
                       onClick={() => review(r.id, "Confirmed")}
@@ -474,6 +568,22 @@ export default function Dashboard() {
                 )}
                 {section === "activities" && (
                   <>
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={!!(draft.inactive ?? draft.preparing)}
+                        onChange={(e) => change("inactive", e.target.checked)}
+                      />{" "}
+                      غير فعّال: عرض التفاصيل دون إجراءات تسجيل
+                    </label>
+                    <label>
+                      رفع صورة النشاط
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={uploadActivityImage}
+                      />
+                    </label>
                     <label>
                       نوع النشاط
                       <select
@@ -512,15 +622,35 @@ export default function Dashboard() {
                         onChange={(e) => change("terms", e.target.value)}
                       />
                     </label>
-                    <label className="checkbox">
-                      <input
-                        type="checkbox"
-                        checked={draft.registrationOpen ?? true}
-                        onChange={(e) =>
-                          change("registrationOpen", e.target.checked)
+                    <label>
+                      وضع التسجيل
+                      <select
+                        aria-label="وضع التسجيل"
+                        value={
+                          draft.registrationMode ||
+                          (draft.registrationOpen === false
+                            ? "closed"
+                            : "standard")
                         }
-                      />{" "}
-                      التسجيل مفتوح
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            registrationMode: e.target.value,
+                            registrationOpen: e.target.value !== "closed",
+                            ...(e.target.value === "waitingList"
+                              ? { allowWaitlist: true }
+                              : {}),
+                          })
+                        }
+                      >
+                        <option value="standard">تسجيل عادي</option>
+                        {draft.kind === "camp" && (
+                          <option value="waitingList">
+                            تسجيل في قائمة الانتظار فقط
+                          </option>
+                        )}
+                        <option value="closed">مغلق · غير فعّال</option>
+                      </select>
                     </label>
                     <label className="checkbox">
                       <input
@@ -540,6 +670,156 @@ export default function Dashboard() {
                         onChange={(e) => change("date", e.target.value)}
                       />
                     </label>
+                    <fieldset className="campSettings">
+                      <legend>تفاصيل المواعيد والمشاركة</legend>
+                      {[
+                        ["startDate", "تاريخ البداية", "date"],
+                        ["endDate", "تاريخ النهاية", "date"],
+                        ["departureTime", "وقت المغادرة", "datetime-local"],
+                        ["arrivalTime", "وقت الوصول", "datetime-local"],
+                      ].map(([key, label, type]) => (
+                        <label key={key}>
+                          {label}
+                          <input
+                            type={type}
+                            value={draft[key] || ""}
+                            onChange={(e) => change(key, e.target.value)}
+                          />
+                        </label>
+                      ))}
+                      <label>
+                        الرسوم
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={draft.fees ?? 0}
+                          onChange={(e) =>
+                            change("fees", Number(e.target.value))
+                          }
+                        />
+                      </label>
+                      <label>
+                        العملة
+                        <input
+                          maxLength={12}
+                          value={draft.currency || "JOD"}
+                          onChange={(e) => change("currency", e.target.value)}
+                        />
+                      </label>
+                      {[
+                        ["instructions", "تعليمات التسجيل"],
+                        ["startInstructions", "تعليمات قبل البدء"],
+                        [
+                          "afterRegistrationInstructions",
+                          "تعليمات بعد التسجيل",
+                        ],
+                      ].map(([key, label]) => (
+                        <label key={key}>
+                          {label}
+                          <textarea
+                            maxLength={2000}
+                            rows={3}
+                            value={draft[key] || ""}
+                            onChange={(e) => change(key, e.target.value)}
+                          />
+                        </label>
+                      ))}
+                    </fieldset>
+                    {draft.kind === "camp" && (
+                      <fieldset className="campSettings">
+                        <legend>إعدادات المخيم والخيام</legend>
+                        {[
+                          ["visitorsDate", "يوم الزيارة"],
+                          ["dobMin", "أقدم تاريخ ميلاد مسموح"],
+                          ["dobMax", "أحدث تاريخ ميلاد مسموح"],
+                        ].map(([key, label]) => (
+                          <label key={key}>
+                            {label}
+                            <input
+                              type="date"
+                              value={draft[key] || ""}
+                              onChange={(e) => change(key, e.target.value)}
+                            />
+                          </label>
+                        ))}
+                        {[
+                          ["waitlistMale", "قائمة الانتظار للذكور"],
+                          ["waitlistFemale", "قائمة الانتظار للإناث"],
+                          ["tentsEnabled", "تفعيل اختيار الخيمة أثناء التسجيل"],
+                        ].map(([key, label]) => (
+                          <label key={key} className="checkbox">
+                            <input
+                              type="checkbox"
+                              checked={draft[key] ?? key !== "tentsEnabled"}
+                              onChange={(e) => change(key, e.target.checked)}
+                            />
+                            {label}
+                          </label>
+                        ))}
+                        {draft.tentsEnabled && (
+                          <>
+                            <p>
+                              الخيام 0–6 للذكور، و7–13 للإناث. السعة الافتراضية
+                              10 لكل خيمة، ويمكن تعديلها أثناء فتح التسجيل.
+                              السعة الكلية للمخيم سقف مستقل.
+                            </p>
+                            <p>
+                              الطلبات قيد المراجعة والمؤكدة تحجز أماكن الخيام؛
+                              الإلغاء أو الرفض يحرّر المكان.
+                            </p>
+                            <div className="tentAdminGrid">
+                              {normalizeActivity(draft).tents.map((t) => (
+                                <div key={t.number} className="tentAdminCard">
+                                  <strong>
+                                    الخيمة {t.number} ·{" "}
+                                    {t.gender === "male" ? "ذكور" : "إناث"}
+                                  </strong>
+                                  <small>
+                                    {tentOccupancy(
+                                      normalizeActivity(draft),
+                                      t.number,
+                                      registrations,
+                                    )}{" "}
+                                    أماكن محجوزة الآن
+                                  </small>
+                                  {[
+                                    ["capacity", "السعة"],
+                                    ["seatsTaken", "إشغال خارجي"],
+                                  ].map(([key, label]) => (
+                                    <label key={key}>
+                                      {label} · الخيمة {t.number}
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        value={t[key]}
+                                        onChange={(e) =>
+                                          change(
+                                            "tents",
+                                            normalizeActivity(draft).tents.map(
+                                              (x) =>
+                                                x.number === t.number
+                                                  ? {
+                                                      ...x,
+                                                      [key]: Number(
+                                                        e.target.value,
+                                                      ),
+                                                    }
+                                                  : x,
+                                            ),
+                                          )
+                                        }
+                                      />
+                                    </label>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </fieldset>
+                    )}
                     <label>
                       المكان
                       <input

@@ -46,10 +46,24 @@ Mobile uses bundled Tajawal Arabic fonts, Ionicons navigation, Spark yellow/blac
 
 The five mobile tabs are Home, Activities, Learn, Ranking and Account. Learning is labelled «تعلّم» with «مسارات التعلّم» inside the section. Activities have camp/trip/event filters plus My registrations. Admin manages activity type, age limits, capacity, external confirmed places, availability, waitlists and participation instructions.
 
-Registration collects participant details, an application role (camper or prospective leader), optional meal/transport requests, review and consent. Requests become Pending when capacity is available, otherwise Waiting if enabled. Pending does not reserve a place; admin approval consumes capacity. Duplicate active requests are blocked, and only Pending/Waiting requests can be cancelled. Leader applications do not grant account permissions. No email, payment, real booking or check-in is performed.
+Registration collects participant details, an application role (camper or prospective leader), optional meal/transport requests, review and consent. Standard camp requests become Pending while capacity is available; a camp waiting list must be explicitly opened by admin. Non-camp requests become Pending when capacity is available, otherwise Waiting if enabled. Pending does not reserve a place; admin approval consumes capacity. Duplicate active requests are blocked, and only Pending/Waiting requests can be cancelled. Leader applications do not grant account permissions. No email, payment, real booking or check-in is performed.
 
 Registrations are local preview records under `spark-event-registrations-v1`. Demo ownership uses the entered demo name, not an authenticated identity. Do not enter actual sensitive participant data. Browser-local validation is not transactional backend protection; secure authentication, persistent shared storage and server-side approval/capacity rules remain required. Native preview records currently remain in memory.
 
 A versioned migration preserves previously edited content and adds the sample camp/trip once to older preview data. Deleted samples do not reappear after migration.
 
 Run `node tests/registration-rules.cjs` for registration rules and migration checks. With the server running, `CHROMIUM_PATH=/usr/bin/chromium SPARK_TEST_URL=http://localhost:3008 npm run test:registrations` exercises registration, admin approval, waitlists and cancellation in Chromium.
+
+## Camp configuration and tent allocation
+
+Admin can configure start/end/visitor dates, departure/arrival date-times, displayed fees/currency, instructions before and after registration, inclusive date-of-birth limits and gender-specific waiting-list availability. Fees are displayed only; no payment is charged. Local image uploads accept PNG/JPEG/WebP up to 500 kB because content is stored in browser storage.
+
+Optional tent selection applies only to camps: male tents 0–6, female tents 7–13; each defaults to 10 places. Admin can adjust each tent's capacity and external occupancy while registration is open. Pending and Confirmed reserve tent places. Cancelled, Rejected and Waiting do not. Capacity cannot be reduced below occupied places. Overall camp capacity is a separate ceiling. Applicants outside the configured male/female tent groups are directed to contact admin for accommodation rather than assigned an incompatible tent.
+
+Camp registration modes are Standard, Waiting list only, and Closed. A separate inactive display switch disables catalog actions; unpublished activities are hidden. Closed/inactive displays «غير فعّال», without implying the activity is coming soon. In Waiting-list-only mode, numbered tents are hidden and a single «قائمة الانتظار» choice is shown. All requests stay Waiting, even if space becomes available; they have no assigned tent and reserve no place. Admin must explicitly select a gender-appropriate tent with capacity and confirm. Standard camp registration does not automatically turn on a waiting list when full. Existing non-camp activity waitlists keep their previous behavior.
+
+An older `preparing` display setting is recognized as inactive. Legacy app-version registration flags are not carried over: enforcing installed-app updates needs a remotely shared minimum-version policy and actual store URLs, which are not connected in this browser-local prototype.
+
+`npm run test:tents` runs reservation rules plus a browser flow. Set CHROMIUM_PATH and SPARK_TEST_URL as with the other preview tests. It covers tent 0, gender changes, DOB validation, live capacities, virtual waiting-only registration and staff tent assignment.
+
+Requested Facebook photos from https://www.facebook.com/GileadCamp have not been imported: the execution proxy blocked the request. Network additions for facebook.com and www.facebook.com were saved to the environment draft, but saving does not apply them. Existing app images remain clearly identified sample assets until original photos are provided or access is enabled.

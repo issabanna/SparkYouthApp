@@ -411,8 +411,13 @@ export default function App() {
                             {a.date || "الموعد يُعلن قريبًا"} · {a.location}
                           </Text>
                         </View>
-                        <Button onPress={() => setTab(ar.programs)}>
-                          تفاصيل النشاط والتسجيل ←
+                        <Button
+                          disabled={!!a.inactive || !a.registrationOpen}
+                          onPress={() => setTab(ar.programs)}
+                        >
+                          {a.inactive || !a.registrationOpen
+                            ? "غير فعّال"
+                            : "تفاصيل النشاط والتسجيل ←"}
                         </Button>
                       </View>
                     </View>

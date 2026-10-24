@@ -13,6 +13,11 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
+  tentError,
+  tentAvailable,
+  eligibleTents,
+  waitingAllowed,
+  ageAt,
   registrationKey,
   kinds,
   statuses,
@@ -35,7 +40,7 @@ const read = () => {
   }
 };
 const uri = (p) =>
-  /^https?:/.test(p) || Platform.OS === "web"
+  /^(https?:|data:)/.test(p) || Platform.OS === "web"
     ? p
     : "https://sparkyouth.vercel.app" + p;
 function Text({ style, ...props }) {
@@ -72,6 +77,8 @@ const blank = (user) => ({
   registrationRole: "camper",
   meals: false,
   transport: false,
+  tentNumber: "",
+  dob: "",
 });
 export default function Registrations({ content, user, onDone }) {
   const [records, setRecords] = useState(read),
@@ -118,7 +125,59 @@ export default function Registrations({ content, user, onDone }) {
     setMessage("");
     setSuccess(null);
   };
-  const update = (key, value) => setDetails({ ...details, [key]: value });
+  const update = (key, value) =>
+    setDetails((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "gender" ? { tentNumber: "" } : {}),
+      ...(key === "dob" &&
+      ageAt(
+        value,
+        activity.startDate ||
+          activity.date ||
+          new Date().toISOString().slice(0, 10),
+      ) != null
+        ? {
+            age: String(
+              ageAt(
+                value,
+                activity.startDate ||
+                  activity.date ||
+                  new Date().toISOString().slice(0, 10),
+              ),
+            ),
+          }
+        : {}),
+    }));
+  const reviewStep = () => {
+    if (
+      activity.registrationMode === "waitingList" &&
+      !waitingAllowed(activity, details.gender)
+    ) {
+      setErrors({
+        tentNumber: "التسجيل في قائمة الانتظار غير متاح لهذا القسم.",
+      });
+      return;
+    }
+    const error = tentError(activity, details);
+    if (error) {
+      setErrors({ tentNumber: error });
+      return;
+    }
+    if (
+      activity.registrationMode !== "waitingList" &&
+      activity.tentsEnabled &&
+      tentAvailable(activity, details.tentNumber, records) === 0
+    ) {
+      setErrors({
+        tentNumber:
+          "الخيمة ممتلئة. اختر خيمة متاحة أو انتظر فتح قائمة الانتظار من الإدارة.",
+      });
+      return;
+    }
+    setErrors({});
+    setStep(2);
+  };
   const next = () => {
     const e = validateDetails(details, activity);
     setErrors(e);
@@ -213,6 +272,21 @@ export default function Registrations({ content, user, onDone }) {
               </View>
               <Text style={s.title}>{r.activityTitle}</Text>
               <Text style={s.body}>رقم الطلب: {r.reference}</Text>
+              {r.details.tentNumber != null && (
+                <Text style={s.body}>
+                  الخيمة {r.details.tentNumber}
+                  {r.status === "Waiting" ? " · تفضيل غير محجوز" : ""}
+                </Text>
+              )}
+              {!!activities.find((a) => a.id === r.activityId)
+                ?.afterRegistrationInstructions && (
+                <Text style={s.info}>
+                  {
+                    activities.find((a) => a.id === r.activityId)
+                      .afterRegistrationInstructions
+                  }
+                </Text>
+              )}
               <Text style={s.body}>
                 {r.status === "Pending"
                   ? "طلبك بانتظار مراجعة الإدارة؛ لا يعني تأكيد المشاركة."
@@ -249,11 +323,13 @@ export default function Registrations({ content, user, onDone }) {
                     <View style={s.cardTop}>
                       <Text style={s.kind}>{kinds[a.kind]}</Text>
                       <Text style={s.slot}>
-                        {slots
-                          ? `${slots} مكانًا متاحًا`
-                          : a.allowWaitlist
-                            ? "قائمة انتظار"
-                            : "مكتمل العدد"}
+                        {a.registrationMode === "waitingList"
+                          ? "قائمة انتظار فقط"
+                          : slots
+                            ? `${slots} مكانًا متاحًا`
+                            : a.allowWaitlist
+                              ? "قائمة انتظار"
+                              : "مكتمل العدد"}
                       </Text>
                     </View>
                     <Text style={s.title}>{a.title}</Text>
@@ -262,24 +338,43 @@ export default function Registrations({ content, user, onDone }) {
                       {a.date || "الموعد يُعلن قريبًا"} · {a.location}
                     </Text>
                     <Text style={s.meta}>
+                      الرسوم:{" "}
+                      {Number(a.fees) > 0
+                        ? `${a.fees} ${a.currency}`
+                        : "مجانًا"}
+                    </Text>
+                    {!!a.startDate && (
+                      <Text style={s.meta}>
+                        البداية: {a.startDate}
+                        {a.endDate ? ` · النهاية: ${a.endDate}` : ""}
+                      </Text>
+                    )}
+                    <Text style={s.meta}>
                       العمر: {a.minAge}–{a.maxAge} سنة
                     </Text>
-                    {registration ? (
+                    {a.inactive ? (
+                      <Action disabled>غير فعّال</Action>
+                    ) : registration ? (
                       <Action secondary onPress={() => setFilter("mine")}>
                         {statuses[registration.status]} · عرض طلبي
                       </Action>
                     ) : (
                       <Action
                         disabled={
-                          !a.registrationOpen || (!slots && !a.allowWaitlist)
+                          !a.registrationOpen ||
+                          (!slots &&
+                            a.registrationMode !== "waitingList" &&
+                            (a.kind === "camp" || !a.allowWaitlist))
                         }
                         onPress={() => open(a)}
                       >
                         {!a.registrationOpen
-                          ? "التسجيل مغلق"
-                          : slots
-                            ? "سجّل الآن ←"
-                            : "انضم إلى قائمة الانتظار"}
+                          ? "غير فعّال"
+                          : a.registrationMode === "waitingList"
+                            ? "سجّل في قائمة الانتظار"
+                            : slots
+                              ? "سجّل الآن ←"
+                              : "انضم إلى قائمة الانتظار"}
                       </Action>
                     )}
                   </View>
@@ -317,6 +412,31 @@ export default function Registrations({ content, user, onDone }) {
                   </Text>
                 </View>
                 <Text style={s.heading}>{activity.title}</Text>
+                {!!activity.instructions && (
+                  <Text style={s.info}>{activity.instructions}</Text>
+                )}
+                {step === 0 && (
+                  <>
+                    {!!activity.startInstructions && (
+                      <Text style={s.info}>{activity.startInstructions}</Text>
+                    )}
+                    {!!activity.visitorsDate && (
+                      <Text style={s.meta}>
+                        يوم الزيارة: {activity.visitorsDate}
+                      </Text>
+                    )}
+                    {!!activity.departureTime && (
+                      <Text style={s.meta}>
+                        المغادرة: {activity.departureTime.replace("T", " ")}
+                      </Text>
+                    )}
+                    {!!activity.arrivalTime && (
+                      <Text style={s.meta}>
+                        الوصول: {activity.arrivalTime.replace("T", " ")}
+                      </Text>
+                    )}
+                  </>
+                )}
                 <View style={s.progress}>
                   {[0, 1, 2].map((i) => (
                     <View
@@ -343,6 +463,21 @@ export default function Registrations({ content, user, onDone }) {
                       keyboardType: "number-pad",
                       maxLength: 2,
                     })}
+                    {activity.kind === "camp" && (
+                      <>
+                        {field(
+                          "dob",
+                          `تاريخ الميلاد${activity.dobMin || activity.dobMax ? " (مطلوب)" : " (اختياري)"}`,
+                          { placeholder: "YYYY-MM-DD", maxLength: 10 },
+                        )}
+                        {(activity.dobMin || activity.dobMax) && (
+                          <Text style={s.meta}>
+                            الميلاد المسموح: {activity.dobMin || "غير محدد"} —{" "}
+                            {activity.dobMax || "غير محدد"}
+                          </Text>
+                        )}
+                      </>
+                    )}
                     <Text style={s.label}>الجنس</Text>
                     <View style={s.choices}>
                       {[
@@ -395,6 +530,117 @@ export default function Registrations({ content, user, onDone }) {
                 )}
                 {step === 1 && (
                   <>
+                    {activity.registrationMode === "waitingList" ? (
+                      <>
+                        <Text style={s.title}>التسجيل في قائمة الانتظار</Text>
+                        <Text style={s.body}>
+                          الخيام المرقمة غير متاحة للاختيار في هذا الوضع. لن
+                          يُحجز أي مكان؛ تعيّن الإدارة خيمة مناسبة عند توفر مكان
+                          والموافقة على طلبك.
+                        </Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="قائمة الانتظار"
+                          accessibilityState={{
+                            selected: details.tentNumber === "waitingList",
+                          }}
+                          onPress={() => update("tentNumber", "waitingList")}
+                          style={[
+                            s.tentTile,
+                            details.tentNumber === "waitingList" &&
+                              s.tentSelected,
+                          ]}
+                        >
+                          <Ionicons name="list-outline" size={28} />
+                          <Text>قائمة الانتظار</Text>
+                        </Pressable>
+                        {!waitingAllowed(activity, details.gender) && (
+                          <Text style={s.error}>
+                            قائمة الانتظار غير مفتوحة لهذا القسم.
+                          </Text>
+                        )}
+                        {errors.tentNumber && (
+                          <Text style={s.error}>{errors.tentNumber}</Text>
+                        )}
+                      </>
+                    ) : (
+                      activity.tentsEnabled && (
+                        <>
+                          <Text style={s.title}>اختر خيمتك</Text>
+                          <Text style={s.body}>
+                            الخيام 0–6 للذكور، و7–13 للإناث. الطلب المعلق يحجز
+                            مكانًا في الخيمة؛ المشاركة تبقى بانتظار الموافقة.
+                          </Text>
+                          <View style={s.tentGrid}>
+                            {eligibleTents(activity, details.gender).map(
+                              (t) => {
+                                const free = tentAvailable(
+                                  activity,
+                                  t.number,
+                                  records,
+                                );
+                                return (
+                                  <Pressable
+                                    key={t.number}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`الخيمة ${t.number}`}
+                                    accessibilityState={{
+                                      selected:
+                                        Number(details.tentNumber) ===
+                                          t.number && details.tentNumber !== "",
+                                      disabled: free === 0,
+                                    }}
+                                    disabled={free === 0}
+                                    onPress={() =>
+                                      update("tentNumber", String(t.number))
+                                    }
+                                    style={[
+                                      s.tentTile,
+                                      details.tentNumber === String(t.number) &&
+                                        s.tentSelected,
+                                      free === 0 && { opacity: 0.4 },
+                                    ]}
+                                  >
+                                    <Ionicons
+                                      name="triangle-outline"
+                                      size={25}
+                                    />
+                                    <Text style={s.tentNumber}>{t.number}</Text>
+                                    <Text style={s.tentMeta}>
+                                      {free
+                                        ? `${free} / ${t.capacity} متاح`
+                                        : "ممتلئة"}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              },
+                            )}
+                          </View>
+                          {!eligibleTents(activity, details.gender).length && (
+                            <Text style={s.info}>
+                              يرجى التواصل مع الإدارة لترتيب السكن؛ لا توجد خيام
+                              مخصصة لهذا الخيار.
+                            </Text>
+                          )}
+                          {details.tentNumber !== "" &&
+                            tentAvailable(
+                              activity,
+                              details.tentNumber,
+                              records,
+                            ) === 0 && (
+                              <Text style={s.info}>
+                                الخيمة ممتلئة. اختر خيمة أخرى متاحة. التسجيل في
+                                قائمة الانتظار يتطلب فتحه من الإدارة.
+                              </Text>
+                            )}
+                          {errors.tentNumber && (
+                            <Text accessibilityRole="alert" style={s.error}>
+                              {errors.tentNumber}
+                            </Text>
+                          )}
+                        </>
+                      )
+                    )}
                     <Text style={s.title}>خدمات اختيارية</Text>
                     <Text style={s.body}>
                       حدّد احتياجاتك للمراجعة مع الإدارة. اختيار الخدمة لا يعني
@@ -420,9 +666,7 @@ export default function Registrations({ content, user, onDone }) {
                         <Text>{label}</Text>
                       </Pressable>
                     ))}
-                    <Action onPress={() => setStep(2)}>
-                      التالي: مراجعة الطلب
-                    </Action>
+                    <Action onPress={reviewStep}>التالي: مراجعة الطلب</Action>
                     <Action secondary onPress={() => setStep(0)}>
                       السابق
                     </Action>
@@ -436,6 +680,18 @@ export default function Registrations({ content, user, onDone }) {
                       ["البريد", details.email],
                       ["الهاتف", details.phone],
                       ["العمر", details.age],
+                      ...(details.dob ? [["تاريخ الميلاد", details.dob]] : []),
+                      ...(activity.registrationMode === "waitingList"
+                        ? [["التسجيل", "قائمة الانتظار"]]
+                        : activity.tentsEnabled
+                          ? [["الخيمة", details.tentNumber]]
+                          : []),
+                      [
+                        "الرسوم",
+                        Number(activity.fees) > 0
+                          ? `${activity.fees} ${activity.currency}`
+                          : "مجانًا",
+                      ],
                       ["العنوان", details.address],
                       [
                         "الدور",
@@ -493,9 +749,22 @@ export default function Registrations({ content, user, onDone }) {
                       <Text style={s.heading}>{statuses[success.status]}</Text>
                       <Text style={s.body}>
                         {success.status === "Waiting"
-                          ? "النشاط مكتمل حاليًا. أضفناك إلى قائمة الانتظار في المعاينة."
+                          ? "أضفناك إلى قائمة الانتظار في المعاينة دون حجز مكان أو خيمة."
                           : "تم حفظ طلبك للمراجعة في المعاينة. المشاركة غير مؤكدة حتى الموافقة."}
                       </Text>
+                      {!!activity.afterRegistrationInstructions && (
+                        <Text style={s.info}>
+                          {activity.afterRegistrationInstructions}
+                        </Text>
+                      )}
+                      {success.details.tentNumber != null && (
+                        <Text style={s.body}>
+                          الخيمة {success.details.tentNumber}
+                          {success.status === "Waiting"
+                            ? " · غير محجوزة بعد"
+                            : ""}
+                        </Text>
+                      )}
                       <Text selectable style={s.reference}>
                         {success.reference}
                       </Text>
@@ -571,6 +840,25 @@ export default function Registrations({ content, user, onDone }) {
   );
 }
 const s = StyleSheet.create({
+  tentGrid: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 9,
+    marginVertical: 16,
+  },
+  tentTile: {
+    width: "30%",
+    minHeight: 105,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 15,
+    padding: 12,
+    alignItems: "center",
+    gap: 6,
+  },
+  tentSelected: { backgroundColor: "#ffda00", borderColor: "#ffda00" },
+  tentNumber: { fontSize: 23, fontFamily: "TajawalBold" },
+  tentMeta: { fontSize: 10, color: "#666" },
   draftOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   eyebrow: { fontSize: 13, color: "#777", marginTop: 12 },
   heading: { fontSize: 29, fontFamily: "TajawalBold", marginVertical: 12 },
