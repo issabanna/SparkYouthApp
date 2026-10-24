@@ -25,8 +25,10 @@ This workspace has JDK 17 at `/workspace/jdk17`, Android SDK at `/workspace/andr
 
 The initial Maven download denial was resolved by enabling `repo.reactnative.dev`. The local `assembleRelease` build completed successfully. APK verification confirmed its v2 signature, launcher activity, package `app.sparkyouth.mobile`, minimum Android API 24, both ARM architectures and embedded Hermes JavaScript bundle. The archive is non-debuggable and passes ZIP integrity validation. This is build/package validation, not a physical-device test.
 
-The downloadable artifact is `apps/admin/public/downloads/spark-youth-preview-0.1.2.apk`; its companion JSON records the source commit, file size, SHA-256 checksum and testing limits. After deployment it is available at `https://sparkyouth.vercel.app/downloads/spark-youth-preview-0.1.2.apk`.
+The downloadable artifact is `apps/admin/public/downloads/spark-youth-preview-0.1.3.apk`; its companion JSON records the source commit, file size, SHA-256 checksum and testing limits. After deployment it is available at `https://sparkyouth.vercel.app/downloads/spark-youth-preview-0.1.3.apk`.
 
 Version 0.1.1 replaces the yellow top banner with a compact white header. Version code 2 and the same preview signing key allow installation as an update to 0.1.0.
 
 Version 0.1.2 bundles sample photos and the logo as native resources, adds image-error placeholders and retrieves published content through the Supabase-backed API. Version code 3 uses the same preview signing key. See `docs/image-publishing.md` for required server configuration.
+
+Version 0.1.3 adds admin control of the welcome image and caches the immutable Supabase imports of the starter photos. Replacing an image in admin produces a new ID and updates the app through the published content endpoint. Version code 4 uses the existing preview signing certificate.
