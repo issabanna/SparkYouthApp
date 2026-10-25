@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import leaders from '../../../../../packages/shared/leaders';
+import auth from '../../../lib/user-auth.cjs';
 import service from '../../../lib/content-service.cjs';
 import checker from '../../../lib/registration-image-check.cjs';
 import { ownerHash, reply, unavailable } from '../../../lib/registration-service';
@@ -7,7 +8,7 @@ import { listRegistrations, getRegistration, mutateRegistration } from '../../..
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export async function GET(request) {
-  const owner = ownerHash(request);
+  const owner = await ownerHash(request);
   if (!owner) return reply({
     error: 'جلسة الحساب مطلوبة.'
   }, 401);
@@ -23,7 +24,7 @@ export async function GET(request) {
   }
 }
 export async function POST(request) {
-  const owner = ownerHash(request);
+  const owner = await ownerHash(request);
   if (!owner || !service.sameOrigin(request)) return reply({
     error: 'جلسة الحساب مطلوبة.'
   }, 401);
@@ -43,6 +44,7 @@ export async function POST(request) {
         id: current?.id || randomUUID(),
         activityId: leaders.accountActivityId,
         recordType: 'account',
+        authUserId:(await auth.userForRequest(request)).id,
         status: 'AccountActive',
         details,
         photo: body.photo === undefined ? current?.photo || '' : body.photo,

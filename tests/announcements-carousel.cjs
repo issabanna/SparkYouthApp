@@ -11,7 +11,9 @@ const shared=require('../packages/shared');
   browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   let count=3;const announcements=Array.from({length:3},(_,i)=>({id:'test-'+i,title:'Announcement '+(i+1),text:'Test announcement',image:'/media/team.png',published:true}));
-  await context.addInitScript(()=>localStorage.setItem('spark-camp-profile-v1',JSON.stringify({user:{name:'Carousel test',role:'camper'},completed:[],reflections:{}})));
+  await context.addInitScript(()=>localStorage.setItem('spark-auth-session-v1',JSON.stringify({access_token:'test.jwt.signature',refresh_token:'test-refresh',expires_at:Date.now()/1000+3600})));
+  await page.route('**/api/auth',route=>route.fulfill({json:{configured:true,authenticated:true,user:{id:'carousel-user',email:'carousel@example.com'}}}));
+  await page.route('**/api/account',route=>route.fulfill({json:{account:{id:'carousel-account',authUserId:'carousel-user',details:{englishFirstName:'Carousel test'}}}}));
   await page.route('**/api/content',route=>route.fulfill({json:{...shared.defaultContent,schemaVersion:shared.contentVersion,announcements:[...announcements.slice(0,count),{id:'hidden',title:'Draft announcement',published:false}]}}));
   for(let i=0;i<50;i++){try{await page.goto(base+'/app');break}catch{await new Promise(r=>setTimeout(r,100))}}
   const card=page.getByTestId('announcement-carousel');await card.getByText('Announcement 1',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:/^الإعلان [123]$/}).count(),3);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 const {
   leaderFields,
   accountFields,
@@ -40,7 +40,11 @@ export default function LeaderAdmin({
     [assignments, setAssignments] = useState([]),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false),
-    [query, setQuery] = useState('');
+    [query, setQuery] = useState(''),[selectedId,setSelectedId]=useState(null),[opening,setOpening]=useState(false);
+  const dialog=useRef(null),detailRequest=useRef(0),detailController=useRef(null);
+  useEffect(()=>{if(selectedId&&dialog.current&&!dialog.current.open)dialog.current.showModal();},[selectedId]);
+  useEffect(()=>()=>detailController.current?.abort(),[]);
+  const close=()=>{if(busy)return;detailRequest.current++;detailController.current?.abort();setSelectedId(null);setSelected(null);setOpening(false);setMessage('');};
   const load = async () => {
     try {
       const response = await fetch('/api/admin/leaders', {
@@ -57,21 +61,15 @@ export default function LeaderAdmin({
     if (cloud === 'remote') load();
   }, [cloud]);
   const open = async id => {
-    setBusy(true);
-    setMessage('');
+    const request=++detailRequest.current;detailController.current?.abort();const controller=new AbortController();detailController.current=controller;
+    setSelectedId(id);setSelected(null);setOpening(true);setMessage('');
+    const timeout=setTimeout(()=>controller.abort(),15000);
     try {
-      const response = await fetch('/api/admin/leaders?id=' + encodeURIComponent(id), {
-          cache: 'no-store'
-        }),
-        r = await response.json();
-      if (!response.ok) throw Error(r.error);
-      setSelected(r.application);
-      setAssignments(r.application.assignments || []);
-    } catch (e) {
-      setMessage(e.message);
-    } finally {
-      setBusy(false);
-    }
+      const response=await fetch('/api/admin/leaders?id='+encodeURIComponent(id),{cache:'no-store',signal:controller.signal}),r=await response.json();
+      if(!response.ok||!r.application)throw Error(r.error||'تعذّر فتح تفاصيل المرشد.');
+      if(request===detailRequest.current){setSelected(r.application);setAssignments(r.application.assignments||[]);}
+    }catch(error){if(request===detailRequest.current)setMessage(error.name==='AbortError'?'استغرق فتح الطلب وقتًا طويلًا. أعد المحاولة.':error.message);}
+    finally{clearTimeout(timeout);if(request===detailRequest.current)setOpening(false);}
   };
   const save = async body => {
     setBusy(true);
@@ -104,7 +102,7 @@ export default function LeaderAdmin({
       setBusy(false);
     }
   };
-  return <section className="panel"><h2>طلبات المرشدين وتكليف الأنشطة</h2>{cloud !== 'remote' ? <p>سجّل دخول الإدارة للاتصال بالطلبات المشتركة.</p> : <><label>بحث باسم المرشد<input value={query} onChange={e => setQuery(e.target.value)} /></label><button disabled={busy} onClick={load}>تحديث</button>{message && <p role="status">{message}</p>}<table className="registrationTable"><thead><tr><th>الاسم</th><th>الحالة</th></tr></thead><tbody>{rows.filter(r => r.details.arabicFullName.includes(query)).map(r => <tr key={r.id}><td><button disabled={busy} onClick={() => open(r.id)}>{r.details.arabicFullName}</button></td><td>{labels[r.status]}</td></tr>)}</tbody></table>{!rows.length && <p>لا توجد طلبات إرشاد بعد.</p>}{selected && <section className="panel editor"><h3>{selected.details.arabicFullName}</h3><button disabled={busy} onClick={() => setSelected(null)}>إغلاق تفاصيل المرشد</button><p>{labels[selected.status]}</p><dl>{[...accountFields, ...leaderFields, ['dob', 'تاريخ الميلاد'], ['gender', 'الجنس']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{key === 'gender' ? selected.details[key] === 'male' ? 'ذكر' : 'أنثى' : selected.details[key] || '—'}</dd></div>)}</dl>{selected.photo && <img src={selected.photo} alt="صورة مقدم طلب الإرشاد" style={{
+  return <section className="panel"><h2>طلبات المرشدين وتكليف الأنشطة</h2>{cloud !== 'remote' ? <p>سجّل دخول الإدارة للاتصال بالطلبات المشتركة.</p> : <><label>بحث باسم المرشد<input value={query} onChange={e => setQuery(e.target.value)} /></label><button disabled={busy} onClick={load}>تحديث</button>{message && !selectedId && <p role="status">{message}</p>}<table className="registrationTable"><thead><tr><th>الاسم</th><th>الحالة</th></tr></thead><tbody>{rows.filter(r => r.details.arabicFullName.includes(query)).map(r => <tr key={r.id} data-testid={"leader-row-"+r.id} onClick={()=>{if(!busy)open(r.id)}}><td><button type="button" disabled={busy} onClick={event=>{event.stopPropagation();open(r.id)}}>{r.details.arabicFullName}</button></td><td>{labels[r.status]}</td></tr>)}</tbody></table>{!rows.length && <p>لا توجد طلبات إرشاد بعد.</p>}{selectedId&&<dialog ref={dialog} className="registrationDialog" aria-labelledby="leader-detail-title" onCancel={event=>{event.preventDefault();close()}}><div className="registrationDialogHeader"><h2 id="leader-detail-title">تفاصيل طلب المرشد</h2><button type="button" disabled={busy} onClick={close}>إغلاق تفاصيل المرشد</button></div>{opening&&<p role="status">جارٍ فتح تفاصيل المرشد…</p>}{message&&<p role="status">{message}</p>}{!opening&&!selected&&<button type="button" onClick={()=>open(selectedId)}>إعادة فتح الطلب</button>}{selected&&<section className="panel editor"><h3>{selected.details.arabicFullName}</h3><p>{labels[selected.status]}</p><dl>{[...accountFields, ...leaderFields, ['dob', 'تاريخ الميلاد'], ['gender', 'الجنس']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{key === 'gender' ? selected.details[key] === 'male' ? 'ذكر' : 'أنثى' : selected.details[key] || '—'}</dd></div>)}</dl>{selected.photo && <img src={selected.photo} alt="صورة مقدم طلب الإرشاد" style={{
           width: 160,
           height: 160,
           objectFit: 'cover',
@@ -143,5 +141,5 @@ export default function LeaderAdmin({
             assignments
           })}>حفظ تكليفات المرشد</button></fieldset>}<details><summary>سجل الإجراءات</summary>{(selected.auditLog || []).slice().reverse().map((a, i) => <p key={i}>{new Date(a.at).toLocaleString('ar-JO', {
               timeZone: 'Asia/Amman'
-            })} · {a.action} · {a.actor?.session || 'مقدم الطلب'}</p>)}</details></section>}</>}</section>;
+            })} · {a.action} · {a.actor?.session || 'مقدم الطلب'}</p>)}</details></section>}</dialog>}</>}</section>;
 }

@@ -7,7 +7,7 @@ import { listRegistrations, getRegistration, mutateRegistration } from '../../..
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 async function access(request, activity) {
-  const owner = ownerHash(request);
+  const owner = await ownerHash(request);
   if (!owner) return null;
   const records = await listRegistrations(owner),
     staff = records.find(r => r.activityId === leaders.accountActivityId);

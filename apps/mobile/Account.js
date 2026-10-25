@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, ScrollView, Modal, Image, Linking, St
 import {pickProfilePhoto} from './profile-photo';
 import { leaderRequest, accountRequest } from './registration-client';
 import AccountIdentity from './AccountIdentity';
+import {ChangePassword} from './AuthScreen';
 import BusApp from './BusApp';
 import LeaderEvaluation, { evaluationLabels } from './LeaderEvaluation';
 import { Picker } from '@react-native-picker/picker';
@@ -187,7 +188,7 @@ export default function Account({
             setError('');
           }} />}
  {screen === 'bus' && !!data?.busActivities?.length && <BusApp activities={data.busActivities} />}
- {screen === 'password' && <><Text style={s.title}>تعديل كلمة السر</Text><Text style={s.text}>تسجيل الدخول الحالي معاينة دون كلمة سر. ستتاح إدارة كلمة السر عند ربط الحسابات بتسجيل دخول حقيقي.</Text></>}
+ {screen === 'password' && <ChangePassword/>}
  {screen === 'privacy' && <><Text style={s.title}>سياسة الخصوصية</Text><Text style={s.text}>{content.accountSettings?.privacyText || 'لم تنشر الإدارة سياسة الخصوصية بعد.'}</Text></>}
  {screen === 'contact' && <><Text style={s.title}>تواصل معنا</Text><Text selectable style={s.text}>{content.accountSettings?.contactText || 'لم تضف الإدارة تفاصيل التواصل بعد.'}</Text></>}
  {screen === 'pending' && <><Text style={s.title}>طلبك بانتظار موافقة الإدارة</Text><Text style={s.text}>استلمنا طلب الإرشاد. عند اعتماده سيظهر زر بوابة المرشدين في حسابك.</Text><Button disabled={busy} onPress={() => act(refresh)}>تحديث الحالة</Button></>}

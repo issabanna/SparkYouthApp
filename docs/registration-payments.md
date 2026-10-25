@@ -1,3 +1,7 @@
+# Authentication update
+
+Real Supabase email/password accounts now replace the older device-session mechanism described below. See [current account setup](user-accounts.md). Historical device-owned records are not automatically assigned to new accounts.
+
 # Shared registrations and payment receipts
 
 Run `supabase/002_registrations_and_receipts.sql` in the existing Supabase SQL Editor. It creates private registration tables and server-only functions for atomic, versioned updates. Existing `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_PASSWORD` in Vercel are reused; no new database credential is needed. Deploy the code, run the migration, then refresh admin and `/app`.

@@ -2,7 +2,7 @@
 
 All participants use the same account entry screen. Basic account details are saved once in a private record; leader applications reuse a server-side snapshot and collect only the additional leader questions. The client cannot choose or submit an approved role. Admin approves/rejects applications and assigns each leader to activities, a role, team group and (for Leaders) a tent.
 
-Account access currently uses the existing opaque, device/browser bearer session. It is not password authentication or cross-device account recovery. The change-password entry explains this rather than pretending to change a password. Do not treat national IDs entered by users as verified identity. A future Supabase Auth migration needs an explicit mapping from device-owned accounts to authenticated users.
+Account access now uses Supabase Auth email/password and verified access tokens. See [real user setup](user-accounts.md) for email verification URLs, sessions and the separation from legacy demo records. National IDs entered by users are not verified identity.
 
 No additional SQL is required after migration 002. The existing private CAS-backed registration record store also stores records under reserved activity namespaces: `__accounts__`, `__leader_applications__`, and `__evaluations__:<activity>`. Their custom states exclude them from tent occupancy, and camper registration lists explicitly exclude reserved namespaces. Private endpoints use bearer ownership or the authenticated admin cookie; the service role key remains server-side.
 

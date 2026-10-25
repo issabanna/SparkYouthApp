@@ -27,6 +27,8 @@ import MediaImage from "./MediaImage";
 import Registrations from "./Registrations";
 import Account from "./Account";
 import AccountIdentity from "./AccountIdentity";
+import AuthScreen from "./AuthScreen";
+import {restoreAuth,subscribeAuth,signOut} from "./auth-client";
 import {accountRequest} from "./registration-client";
 import {
   normalizeContent,
@@ -182,14 +184,15 @@ export default function App() {
     const listener=AppState.addEventListener('change',state=>{if(state==='active')refreshContent()});
     return()=>{active=false;clearInterval(refreshTimer);if(Platform.OS==='web')window.removeEventListener('focus',onFocus);controller?.abort();listener.remove()};
   },[]);
-  const [profile, setProfile] = useState(() =>
-    load(sessionKey, {
-      user: null,
-      reflections: {},
-      completed: [],
-    }),
-  );
-  useEffect(()=>{accountRequest().then(({account})=>{if(account)setProfile(p=>({...p,account}))}).catch(()=>{});},[]);
+  const emptyProfile={user:null,account:null,reflections:{},completed:[]};
+  const [profile,setProfile]=useState(emptyProfile),[authUser,setAuthUser]=useState(null),[authChecking,setAuthChecking]=useState(true),[authError,setAuthError]=useState("");
+  const loadAuthenticatedUser=async user=>{
+    setAuthChecking(true);setAuthError("");setAuthUser(user);setProfile(emptyProfile);
+    try{if(user){const {account}=await accountRequest();setProfile({...emptyProfile,...load(sessionKey+':'+user.id,{}),account});}}
+    catch(error){setAuthError(error.message)}finally{setAuthChecking(false)}
+  };
+  const restoreSession=async()=>{setAuthChecking(true);setAuthError("");try{await loadAuthenticatedUser(await restoreAuth())}catch(error){setAuthError(error.message);setAuthChecking(false)}};
+  useEffect(()=>{if(Platform.OS==='web')localStorage.removeItem(sessionKey);const unsubscribe=subscribeAuth(()=>{setAuthUser(null);setProfile(emptyProfile);setAuthError("");setAuthChecking(false)});restoreSession();return unsubscribe;},[]);
   const [tab, setTab] = useState(ar.home),
     [slide, setSlide] = useState(0),
     [selected, setSelected] = useState(null),
@@ -214,9 +217,9 @@ export default function App() {
   }, [tab]);
   const updateProfile = (next) => {
     setProfile(next);
-    save(sessionKey, next);
+    if(authUser)save(sessionKey+':'+authUser.id,{completed:next.completed,reflections:next.reflections});
   };
-  const user = profile.user ? {...profile.user,role:"camper"} : null;
+  const user = authUser && profile.account?.authUserId===authUser.id ? {id:authUser.id,name:profile.account.details.englishFirstName,role:"camper"} : null;
   const announcements = content.announcements.filter((x) => x.published),
     journeys = content.journeys.filter((j) => canAccessJourney(j, user));
   const ranking = [
@@ -350,18 +353,8 @@ export default function App() {
       </View>
       {!user ? (
         <ScrollView contentContainerStyle={s.content}>
-          {(content.branding?.welcomeImage ?? "/media/camp.png") !== "" && <Photo
-            path={content.branding?.welcomeImage ?? "/media/camp.png"}
-            style={{height: 230, borderRadius: 24}}
-          />}
-          <Text style={s.kicker}>أصدقاء. مغامرة. أثر.</Text>
-          <Text style={s.heroTitle}>كل مخيم بداية حكاية</Text>
-          <Text style={s.body}>
-            أخبار مخيمك، لحظاتنا الجميلة، ومسارات تعلّم قصيرة نتعلّم فيها معًا.
-            ادخل لاستكشاف مجتمع سبارك.
-          </Text>
-          <AccountIdentity initial={profile.account?.details} cityOptions={content.registrationOptions?.cityOptions||[]} onSaved={account=>updateProfile({...profile,account,user:{name:account.details.englishFirstName,role:'camper'}})}/>
-          <Text style={s.caption}>حساب موحّد للمشاركين والمرشدين. يُحفظ الوصول في هذا المتصفح أو الجهاز حاليًا.</Text>
+          {authChecking?<Text style={s.body}>جارٍ التحقق من الحساب…</Text>:authError?<><Text accessibilityRole="alert" style={s.body}>{authError}</Text><Button onPress={restoreSession}>إعادة المحاولة</Button></>:!authUser?<AuthScreen onAuthenticated={loadAuthenticatedUser}/>:<AccountIdentity cityOptions={content.registrationOptions?.cityOptions||[]} onSaved={account=>updateProfile({...profile,account})}/>}
+
         </ScrollView>
       ) : (
         <>
@@ -767,7 +760,7 @@ export default function App() {
                 </Text>
               </>
             )}
-            {tab === ar.account && <Account user={user} profile={profile} updateProfile={updateProfile} content={content} onNotifications={()=>setSelected({type:'announcements'})} onLogout={()=>{setSelected(null);updateProfile({...profile,user:null,completed:[],reflections:{}})}}/>}
+            {tab === ar.account && <Account user={user} profile={profile} updateProfile={updateProfile} content={content} onNotifications={()=>setSelected({type:'announcements'})} onLogout={async()=>{setSelected(null);setTab(ar.home);if(Platform.OS==='web')localStorage.removeItem(sessionKey+':'+authUser.id);try{await signOut()}catch{}}}/>}
           </ScrollView>
           <View style={s.tabDock}>
             <View style={s.tabs}>

@@ -58,7 +58,7 @@ async function response(record, account) {
   };
 }
 export async function GET(request) {
-  const owner = ownerHash(request);
+  const owner = await ownerHash(request);
   if (!owner) return reply({
     error: 'جلسة الحساب مطلوبة.'
   }, 401);
@@ -72,7 +72,7 @@ export async function GET(request) {
   }
 }
 export async function POST(request) {
-  const owner = ownerHash(request);
+  const owner = await ownerHash(request);
   if (!owner || !service.sameOrigin(request)) return reply({
     error: 'جلسة الحساب مطلوبة.'
   }, 401);

@@ -1,6 +1,6 @@
 # Spark Youth
 
-Arabic-first replacement foundation: Expo mobile app (Android/iOS) and Next.js web administration. UI copy is prepared for future English localization; mobile strings live in packages/shared. Published content and images can use Supabase with password-protected admin publishing. Registration and receipt records use private Supabase storage after migration 002; camper sign-in, leader approvals and attendance remain prototypes. No Adalo data has been migrated.
+Arabic-first replacement foundation: Expo mobile app (Android/iOS) and Next.js web administration. UI copy is prepared for future English localization; mobile strings live in packages/shared. Published content and images can use Supabase with password-protected admin publishing. Registration and receipt records use private Supabase storage after migration 002; user sign-in uses Supabase Auth, leader approvals are managed in admin, and bus attendance uses scoped QR check-in. No Adalo data has been migrated.
 
 ## Development
 
@@ -15,7 +15,7 @@ Use the existing checkout; a separate worktree is unnecessary.
 ## Next implementation milestones
 
 1. Database and authenticated Youth / Leader / Admin permissions enforced by the backend.
-2. Run the shared registration migration and replace device-session ownership with authenticated camper accounts and recovery.
+2. Configure Supabase Auth email verification URLs; plan password-reset email delivery and any explicit legacy-data migration.
 3. Per-admin accounts and server-side audit records for program and registration management.
 4. Shared learning comments, notifications and QR/bus attendance.
 5. Adalo migration planning, privacy/guardian requirements, device testing and store delivery.
@@ -24,19 +24,19 @@ No existing data is imported. Capacity policy, consent requirements, branding as
 
 ## Mobile browser review
 
-`npm run build` exports the Expo mobile UI to the admin public/app directory before building Next.js. Visit `/app/` on the deployed site to review the mobile prototype. This is the same React Native screen rendered for web, not a native device test. Camper sign-in remains a demo; shared public content and images load when Supabase is configured.
+`npm run build` exports the Expo mobile UI to the admin public/app directory before building Next.js. Visit `/app/` on the deployed site to review the mobile prototype. This is the same React Native screen rendered for web, not a native device test. Camper sign-in requires a real email/password account; shared public content and images load when Supabase is configured.
 
 ## Camping community preview
 
-The wall has been removed. The mobile preview now starts with a clearly marked demo sign-in, then shows announcement slides, activities, galleries, learning journeys, reflection/completion, comments and personal completion counts with clearly labelled example leaderboards. Camper and pending-leader demos cannot see leader-only journeys; the approved-leader demo can. These are client-side preview rules, not backend authorization.
+The wall has been removed. The mobile app starts with real email/password sign-in, then shows announcements, activities, galleries and learning journeys. Admin approves leader applications and assigns per-camp roles; private evaluation and bus permissions are checked by the server. Learning reflections, comments, progress and example leaderboards remain local preview features.
 
 The admin can add, edit, reorder, publish and remove content and moderate local comments. The overview accepts an original PNG/JPEG/WebP logo under 500 kB on a white background. Seed camp illustrations are placeholders, not real camp photographs. Activity dates intentionally remain unset pending actual scheduling.
 
-With Supabase configured, admin content is privately stored and published through the server; localStorage is the unconfigured preview fallback. Shared registrations and receipts require [migration 002](supabase/002_registrations_and_receipts.sql). See [payment setup and the device-session limitations](docs/registration-payments.md). Progress/sign-in are still previews; there is no authenticated account recovery or cross-device member access.
+With Supabase configured, admin content is privately stored and published through the server; localStorage is the unconfigured preview fallback. Shared registrations and receipts require [migration 002](supabase/002_registrations_and_receipts.sql). See [payment setup](docs/registration-payments.md) and [real user account setup](docs/user-accounts.md). Learning progress remains local; authenticated registrations and profiles are available across devices.
 
 ### Browser regression check
 
-After `npm run build`, start the production server on port 3004 with `npm run start --workspace @spark/admin -- --port 3004`. Run `npx playwright install chromium` once, then `npm run test:preview`. If Chromium is already installed, set `CHROMIUM_PATH` to its executable. Set `SPARK_TEST_URL` to test another origin. Tests cover sign-in gating, announcement navigation, gallery viewing, audience rules, reflection persistence, comments, deduplicated completion, and admin edits reaching the app preview.
+After `npm run build`, run `node tests/user-auth-server.cjs`, `node tests/leader-portal-server.cjs`, `node tests/shared-payments-server.cjs` and `node tests/announcements-carousel.cjs`. They start their own local servers and use Chromium at `/usr/bin/chromium`; Auth/PostgREST/storage responses are mocked. No live users, emails or registrations are created. Older preview scripts may still expect the retired demo sign-in.
 
 ## Visual identity
 
@@ -94,4 +94,4 @@ When server-side Supabase settings are configured, `npm run build` also imports 
 
 ## Shared payment workflow
 
-Run [002_registrations_and_receipts.sql](supabase/002_registrations_and_receipts.sql) and follow [registration payment setup](docs/registration-payments.md). The workflow is waiting for payment → receipt review → approval. Admin acceptance of a receipt also approves the request; rejection lets the camper re-upload. Approval instructions are excluded from public content and returned only for approved owner registrations. Returning requests use the same browser/device session for now.
+Run [002_registrations_and_receipts.sql](supabase/002_registrations_and_receipts.sql) and follow [registration payment setup](docs/registration-payments.md). The workflow is waiting for payment → receipt review → approval. Admin acceptance of a receipt also approves the request; rejection lets the camper re-upload. Approval instructions are excluded from public content and returned only for approved owner registrations. Returning requests use the same authenticated Supabase account across devices.

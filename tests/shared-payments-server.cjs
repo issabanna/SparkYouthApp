@@ -1,3 +1,4 @@
+const auth=require('./auth-fixtures.cjs').createAuthFixture();
 const assert=require('node:assert/strict');
 const http=require('node:http');
 const {spawn}=require('node:child_process');
@@ -14,6 +15,7 @@ function summary(r){const {receipt,...rest}=structuredClone(r);delete rest.detai
 const db=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');const chunks=[];for await(const chunk of req)chunks.push(chunk);const bytes=Buffer.concat(chunks);const value=(req.headers['content-type']||'').includes('application/json')&&bytes.length?JSON.parse(bytes.toString()):{};
  assert.equal(req.headers.apikey,'test-service-role-only');
+ const authResult=auth.handle(req,url,value);if(authResult){res.writeHead(authResult.status,{'Content-Type':'application/json'});res.end(JSON.stringify(authResult.body));return;}
  let result;
  if(url.pathname.startsWith('/storage/v1/object/')){
   const id=url.pathname.split('/').pop();
@@ -44,14 +46,15 @@ const db=http.createServer(async(req,res)=>{try{
  const api=await request.newContext();let browser;
  try{
   for(let i=0;i<60;i++){try{if((await api.get(base+'/api/registrations')).status()===401)break;}catch{}await new Promise(r=>setTimeout(r,200));}
-  const makeOwner=async()=>{const response=await api.post(base+'/api/registrations/session');assert.equal(response.status(),200);const {token}=await response.json();return {Authorization:'Bearer '+token};};
+  let accountNumber=0;const makeOwner=async()=>{const response=await api.post(base+'/api/auth',{data:{action:'signup',email:'payment'+(++accountNumber)+'@example.com',password:'Test-password-123'}});assert.equal(response.status(),200);const {session}=await response.json();return {Authorization:'Bearer '+session.access_token};};
   const owner=await makeOwner(),other=await makeOwner();
+  assert.equal((await api.post(base+'/api/account',{headers:owner,data:{details:{englishFirstName:'Parent',englishFatherName:'Test',englishLastName:'User',nationalId:'TEST-123',dob:'1990-01-01',city:'Test',phone:'0790000000',gender:'male'}}})).status(),200);
   const send=async(headers,data)=>api.post(base+'/api/registrations',{headers,data});
   let response=await send(owner,{action:'submit',activityId:activity.id,name:'Parent',details:{gender:'male',tentNumber:'0'},consent:true});assert.equal(response.status(),200,await response.text());let result=await response.json(),id=result.recordId;
   browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
   const ownerContext=await browser.newContext({viewport:{width:390,height:844}}),page=await ownerContext.newPage(),browserErrors=[];
   debugPage=page;page.on('pageerror',e=>browserErrors.push(e.message));
-  await ownerContext.addInitScript(token=>{localStorage.setItem('spark-registration-session-v1',token);localStorage.setItem('spark-camp-profile-v1',JSON.stringify({user:{name:'Parent',role:'camper'},completed:[],reflections:{}}))},owner.Authorization.slice(7));
+  await ownerContext.addInitScript(token=>{localStorage.setItem('spark-auth-session-v1',JSON.stringify(token));localStorage.setItem('spark-camp-profile-v1',JSON.stringify({user:{name:'Parent',role:'camper'},completed:[],reflections:{}}))},auth.sessionForToken(owner.Authorization.slice(7)));
   await page.goto(base+'/app');
   await page.getByRole('tab',{name:'الأنشطة',exact:true}).click();await page.getByRole('button',{name:'تسجيلاتي',exact:true}).click();await page.getByText('بانتظار الدفع',{exact:true}).waitFor();
   await page.getByText('PAYMENT INSTRUCTIONS',{exact:true}).waitFor();assert.equal(await page.getByText('APPROVED SECRET',{exact:true}).count(),0);

@@ -2,7 +2,7 @@ import leaders from '../../../packages/shared/leaders';
 import { ownerHash } from './registration-service';
 import { listRegistrations, getRegistration } from './registration-store';
 export async function leaderAccess(request, activityId) {
-  const owner = ownerHash(request);
+  const owner = await ownerHash(request);
   if (!owner) return null;
   const own = (await listRegistrations(owner)).find(r => r.activityId === leaders.leaderActivityId);
   const assignment = leaders.assignmentOf(own, activityId);

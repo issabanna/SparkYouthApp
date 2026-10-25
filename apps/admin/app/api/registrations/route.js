@@ -7,12 +7,12 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export async function GET(request){
  if(!service.configured())return reply({shared:false});
- const owner=ownerHash(request);if(!owner)return reply({error:'جلسة التسجيل مطلوبة.'},401);
+ const owner=await ownerHash(request);if(!owner)return reply({error:'جلسة التسجيل مطلوبة.'},401);
  try{return reply(await ownerResponse(owner));}catch{return unavailable();}
 }
 export async function POST(request){
  if(!service.configured())return reply({shared:false},503);
- const owner=ownerHash(request);if(!owner||!service.sameOrigin(request))return reply({error:'جلسة التسجيل مطلوبة.'},401);
+ const owner=await ownerHash(request);if(!owner||!service.sameOrigin(request))return reply({error:'جلسة التسجيل مطلوبة.'},401);
  if(Number(request.headers.get('content-length'))>1600000)return reply({error:'الطلب كبير جدًا.'},413);
  let body;
  try{const text=await request.text();if(text.length>1600000)return reply({error:'الطلب كبير جدًا.'},413);body=JSON.parse(text);}catch{return reply({error:'طلب غير صالح.'},400);}
