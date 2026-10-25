@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   AppState,
+  PanResponder,
   SafeAreaView,
   View,
   Text as NativeText,
@@ -238,6 +239,32 @@ export default function App() {
   const progress = journeys.length
     ? Math.round((completed / journeys.length) * 100)
     : 0;
+  const announcementStart = useRef(null);
+  const announcementGesture = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => announcements.length > 1 && Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
+    onPanResponderRelease: (_, gesture) => {
+      if (Math.abs(gesture.dx) >= 35 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5)
+        setSlide(current => (current + (gesture.dx < 0 ? 1 : -1) + announcements.length) % announcements.length);
+    },
+    onPanResponderTerminationRequest: () => true,
+  }), [announcements.length]);
+  const announcementHandlers = Platform.OS === "web" ? {
+    onPointerDown: event => {
+      const point=event.nativeEvent || event;
+      if(point.isPrimary === false || (point.pointerType === 'mouse' && point.button !== 0))return;
+      announcementStart.current={x:point.clientX,y:point.clientY,id:point.pointerId};
+      event.currentTarget.setPointerCapture?.(point.pointerId);
+    },
+    onPointerUp: event => {
+      const point=event.nativeEvent || event,start=announcementStart.current;
+      announcementStart.current=null;
+      if(!start || point.pointerId!==start.id || announcements.length<2)return;
+      const dx=point.clientX-start.x,dy=point.clientY-start.y;
+      if(Math.abs(dx)>=35 && Math.abs(dx)>Math.abs(dy)*1.5)
+        setSlide(current=>(current+(dx<0?1:-1)+announcements.length)%announcements.length);
+    },
+    onPointerCancel: ()=>{announcementStart.current=null;},
+  } : announcementGesture.panHandlers;
   const activeSlide = announcements[slide % Math.max(announcements.length, 1)];
   const journey =
     selected?.type === "journey"
@@ -355,7 +382,7 @@ export default function App() {
                   </View>
                 </View>
                 {activeSlide && (
-                  <View style={s.heroCard}>
+                  <View testID="announcement-carousel" {...announcementHandlers} style={[s.heroCard, Platform.OS === "web" && {touchAction:"pan-y",userSelect:"none"}]}>
                     <Photo path={activeSlide.image} style={s.heroPhoto} />
                     <LinearGradient
                       colors={["transparent", "rgba(0,0,0,0.9)"]}
@@ -371,20 +398,14 @@ export default function App() {
                     </View>
                   </View>
                 )}
-                <View style={s.dots}>
-                  {announcements.map((a, i) => (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={"الإعلان " + (i + 1)}
-                      key={a.id}
-                      onPress={() => setSlide(i)}
-                      style={[
-                        s.dot,
-                        i === slide % announcements.length && s.dotActive,
-                      ]}
-                    />
-                  ))}
-                </View>
+                {announcements.length > 1 && <View style={{flexDirection:"row",alignItems:"center",justifyContent:"center",gap:18}}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="الإعلان السابق" onPress={()=>setSlide(current=>(current-1+announcements.length)%announcements.length)} style={{minWidth:44,minHeight:44,alignItems:"center",justifyContent:"center"}}><Icon name="chevron-back" size={20}/></Pressable>
+                  <View style={s.dots}>
+                    {announcements.map((a,i)=><Pressable accessibilityRole="button" accessibilityLabel={"الإعلان "+(i+1)} accessibilityState={{selected:i===slide%announcements.length}} key={a.id} onPress={()=>setSlide(i)} style={{minWidth:24,minHeight:44,alignItems:"center",justifyContent:"center"}}><View style={[s.dot,i===slide%announcements.length&&s.dotActive]}/></Pressable>)}
+                  </View>
+                  <Text accessibilityLiveRegion="polite" style={s.caption}>{slide%announcements.length+1} / {announcements.length}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="الإعلان التالي" onPress={()=>setSlide(current=>(current+1)%announcements.length)} style={{minWidth:44,minHeight:44,alignItems:"center",justifyContent:"center"}}><Icon name="chevron-forward" size={20}/></Pressable>
+                </View>}
                 <View style={s.quickRow}>
                   {[
                     [ar.programs, "calendar-outline", "تسجيل الأنشطة"],
