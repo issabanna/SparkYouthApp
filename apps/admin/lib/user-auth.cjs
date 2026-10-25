@@ -32,7 +32,7 @@ async function userForRequest(request) {
         data,
         error
       } = await client().auth.getUser(token);
-      return !error && data.user?.id ? data.user : null;
+      return !error && data.user?.id && data.user.email && !data.user.is_anonymous ? data.user : null;
     } catch {
       return null;
     }

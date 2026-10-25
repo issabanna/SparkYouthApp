@@ -2,7 +2,7 @@ const {randomUUID,randomBytes}=require('node:crypto');
 function createAuthFixture(){
  const users=new Map(),tokens=new Map(),refreshes=new Map();let requireConfirmation=false;
  const sessionFor=(user)=>{const exp=Math.floor(Date.now()/1000)+3600,access=[Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({sub:user.id,exp,nonce:randomBytes(6).toString('hex')})).toString('base64url'),randomBytes(24).toString('base64url')].join('.'),refresh=randomBytes(32).toString('hex');const session={access_token:access,refresh_token:refresh,expires_in:3600,expires_at:exp,token_type:'bearer',user:publicUser(user)};tokens.set(access,session);refreshes.set(refresh,session);return session;};
- const publicUser=u=>({id:u.id,email:u.email,aud:'authenticated',role:'authenticated',email_confirmed_at:u.confirmed?new Date().toISOString():null,app_metadata:{provider:'email'},user_metadata:{},created_at:new Date().toISOString()});
+ const publicUser=u=>({id:u.id,email:u.email,is_anonymous:!!u.is_anonymous,aud:'authenticated',role:'authenticated',email_confirmed_at:u.confirmed?new Date().toISOString():null,app_metadata:{provider:'email'},user_metadata:{},created_at:new Date().toISOString()});
  const failure=(code,message)=>({status:400,body:{code,error_code:code,msg:message}});
  return {set requireConfirmation(v){requireConfirmation=v},confirm(email){users.get(email).confirmed=true},sessionForToken:token=>tokens.get(token),user:email=>users.get(email),
  handle(req,url,value){
