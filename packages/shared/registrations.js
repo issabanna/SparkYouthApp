@@ -433,7 +433,8 @@ function changeRegistrationStatus(
   if (
     status === "Confirmed" &&
     (current.paymentRequired ?? (a?.requireReceipt && Number(current.feeAmount) > 0)) &&
-    current.receiptStatus !== "accepted"
+    current.receiptStatus !== "accepted" &&
+    !current.paymentWaiver
   )
     return {
       error:
@@ -586,3 +587,24 @@ module.exports.registrationStatusLabel = (record) => {
 };
 module.exports.registrationInstructions = (activity, record) => record.status === "Confirmed"
   ? activity?.approvedInstructions || record.instructionText || "" : record.status === "Pending" ? activity?.afterRegistrationInstructions || record.instructionText || "" : "";
+
+module.exports.approveWithoutReceipt = (records,id,activities,reason,actor,assignedTent) => {
+  const current=records.find(r=>r.id===id);
+  const justification=typeof reason==='string'?reason.trim():'';
+  if(justification.length<3||justification.length>1000)return {error:'أدخل سبب تأكيد الطلب بدون وصل (من 3 إلى 1000 حرف).'};
+  if(!current||!['Pending','Waiting'].includes(current.status)||current.receiptStatus==='accepted')return {error:'هذا الإجراء متاح للطلبات قيد المعالجة دون وصل مقبول فقط.'};
+  const waived={...current,paymentWaiver:{reason:justification,actor,at:new Date().toISOString()}};
+  return changeRegistrationStatus(records.map(r=>r.id===id?waived:r),id,'Confirmed',activities,assignedTent);
+};
+module.exports.appendRegistrationAction = (record,{action,actor,before,reason=''}) => ({
+ ...record,
+ auditLog:[...(before?.auditLog||[]),{
+  id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  at:new Date().toISOString(),action,actor,
+  fromStatus:before?.status||null,toStatus:record.status,
+  fromLabel:before?module.exports.registrationStatusLabel(before):null,toLabel:module.exports.registrationStatusLabel(record),
+  fromReceiptStatus:before?.receiptStatus||null,toReceiptStatus:record.receiptStatus,
+  fromTent:before?.details?.tentNumber??null,toTent:record.details?.tentNumber??null,
+  ...(reason?{reason}:{}),
+ }],
+});

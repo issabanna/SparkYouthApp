@@ -56,4 +56,10 @@ function imageType(bytes) {
   if(bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP')return 'webp';
   return null;
 }
-module.exports={configured,authenticated,cookie,sameOrigin,validPassword,validateContent,publicContent,imageType,defaultContent};
+function adminSessionActor(request) {
+ if(!authenticated(request))return null;
+ const value=(request.headers.get('cookie')||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName+'='));
+ const nonce=value.slice(cookieName.length+1).split('.')[1];
+ return {type:'admin',session:crypto.createHash('sha256').update(nonce).digest('hex').slice(0,12)};
+}
+module.exports={adminSessionActor,configured,authenticated,cookie,sameOrigin,validPassword,validateContent,publicContent,imageType,defaultContent};

@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from "react";
 import {prepareImage, imageData} from "../lib/prepare-image";
 import {
   reviewReceipt,
+  approveWithoutReceipt,
+  appendRegistrationAction,
   registrationStatusLabel,
   validateCampSettings,
   tentOccupancy,
@@ -120,6 +122,26 @@ export default function Dashboard() {
     catch(error){setMessage(error.message||'تعذّر تحديث الطلب.');}
   };
   const [tentAssignments, setTentAssignments] = useState({});
+  const [overrideId,setOverrideId]=useState(null),[overrideReason,setOverrideReason]=useState('');
+  const [overrideBusy,setOverrideBusy]=useState(false);
+  const confirmWithoutReceipt=async()=>{
+    if(overrideBusy||overrideReason.trim().length<3)return;
+    setOverrideBusy(true);
+    try{
+      if(cloud==='remote'){
+        const response=await fetch('/api/admin/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approveWithoutReceipt',id:overrideId,reason:overrideReason,tent:tentAssignments[overrideId]})});
+        const result=await response.json();if(!response.ok)throw Error(result.error);setRegistrations(result.records);
+      }else{
+        const latest=JSON.parse(localStorage.getItem(registrationKey))||[];
+        const result=approveWithoutReceipt(latest,overrideId,content.activities,overrideReason,{type:'admin',session:'local-preview'},tentAssignments[overrideId]);
+        if(result.error)throw Error(result.error);
+        const before=latest.find(r=>r.id===overrideId);
+        const next=result.records.map(r=>r.id===overrideId?appendRegistrationAction(r,{action:'approved_without_receipt',actor:{type:'admin',session:'local-preview'},before,reason:overrideReason.trim()}):r);
+        localStorage.setItem(registrationKey,JSON.stringify(next));setRegistrations(next);
+      }
+      setOverrideId(null);setOverrideReason('');setMessage('تم تأكيد الطلب بدون وصل وحفظ السبب في سجل الإجراءات.');
+    }catch(error){setMessage(error.message||'تعذّر تأكيد الطلب.');}finally{setOverrideBusy(false)}
+  };
   const [content, setContent] = useState(defaultContent),
     [section, setSection] = useState("overview"),
     [draft, setDraft] = useState(null),
@@ -262,6 +284,8 @@ export default function Dashboard() {
   };
   const change = (key, value) => setDraft({ ...draft, [key]: value });
   const review = (id, status) => {
+    const record=registrations.find(r=>r.id===id);
+    if(status==='Confirmed'&&record?.receiptStatus!=='accepted'){setOverrideId(id);setOverrideReason('');return;}
     if(cloud==='remote'){remoteRegistrationAction({action:'status',id,status,tent:tentAssignments[id]});return;}
     try {
       const latest = JSON.parse(localStorage.getItem(registrationKey)) || [];
@@ -279,8 +303,9 @@ export default function Dashboard() {
         setMessage(result.error);
         return;
       }
-      localStorage.setItem(registrationKey, JSON.stringify(result.records));
-      setRegistrations(result.records);
+      const next=result.records.map(r=>r.id===id?appendRegistrationAction(r,{action:status==='Pending'?'seat_allocated_payment_requested':status==='Confirmed'?'approved':'rejected',actor:{type:'admin',session:'local-preview'},before:latest.find(x=>x.id===id)}):r);
+      localStorage.setItem(registrationKey, JSON.stringify(next));
+      setRegistrations(next);
       setMessage("تم تحديث حالة الطلب في المعاينة.");
     } catch {
       setMessage("تعذّر تحديث حالة الطلب.");
@@ -296,8 +321,9 @@ export default function Dashboard() {
         setMessage(result.error);
         return;
       }
-      localStorage.setItem(registrationKey, JSON.stringify(result.records));
-      setRegistrations(result.records);
+      const next=result.records.map(r=>r.id===id?appendRegistrationAction(r,{action:decision==='accepted'?'receipt_accepted_and_approved':'receipt_rejected',actor:{type:'admin',session:'local-preview'},before:latest.find(x=>x.id===id)}):r);
+      localStorage.setItem(registrationKey, JSON.stringify(next));
+      setRegistrations(next);
       setMessage(
         decision === "accepted"
           ? "تم قبول الوصل واعتماد الطلب."
@@ -539,6 +565,14 @@ export default function Dashboard() {
         ) : section === "registrations" ? (
           <section className="panel">
             <h2>مراجعة طلبات المشاركة</h2>
+            {overrideId && <section className="panel editor">
+              <h3>تأكيد الطلب بدون وصل</h3>
+              <p>اكتب سبب الموافقة بدون وصل مقبول. سيُحفظ السبب مع وقت الإجراء وجلسة الإدارة.</p>
+              <label>سبب التأكيد بدون وصل<textarea value={overrideReason} maxLength={1000} rows={4} onChange={e=>setOverrideReason(e.target.value)} /></label>
+              <button type="button" disabled={overrideBusy||overrideReason.trim().length<3} onClick={confirmWithoutReceipt}>حفظ السبب وتأكيد الطلب</button>
+              <button type="button" disabled={overrideBusy} onClick={()=>{setOverrideId(null);setOverrideReason('')}}>إلغاء التأكيد</button>
+            </section>}
+
             <p>
               طلبات محلية في هذا المتصفح فقط. الموافقة تُحسب من السعة؛ الطلبات
               المعلقة لا تحجز مقاعد المخيم العامة، لكنها تحجز أماكن الخيام عند
@@ -610,6 +644,17 @@ export default function Dashboard() {
                       }}
                     />
                   )}
+                </details>
+                {r.paymentWaiver && <p className="status">تم التأكيد بدون وصل: {r.paymentWaiver.reason}</p>}
+                <details>
+                  <summary>سجل إجراءات الطلب ({r.auditLog?.length||0})</summary>
+                  {r.auditLog?.length ? <ol>{r.auditLog.map(entry=><li key={entry.id}>
+                    <strong>{({submitted:'إرسال الطلب',receipt_uploaded:'رفع وصل الدفع',cancelled:'إلغاء الطلب',receipt_accepted_and_approved:'قبول الوصل واعتماد الطلب',receipt_rejected:'طلب تصحيح الوصل',seat_allocated_payment_requested:'تخصيص مقعد وطلب الدفع',approved:'اعتماد الطلب',rejected:'رفض الطلب',approved_without_receipt:'تأكيد الطلب بدون وصل'})[entry.action]||entry.action}</strong>
+                    <p>{new Date(entry.at).toLocaleString('ar-JO',{timeZone:'Asia/Amman'})} · {entry.actor?.type==='admin'?`الإدارة · الجلسة ${entry.actor.session}`:'المسجّل'}</p>
+                    <p>{entry.fromLabel||(entry.fromStatus?registrationStatusLabel({status:entry.fromStatus,receiptStatus:entry.fromReceiptStatus}):'طلب جديد')} ← {entry.toLabel||registrationStatusLabel({status:entry.toStatus,receiptStatus:entry.toReceiptStatus})}</p>
+                    {entry.fromTent!==entry.toTent && <p>الخيمة: {entry.fromTent??'بدون'} ← {entry.toTent??'بدون'}</p>}
+                    {!!entry.reason && <p>السبب: {entry.reason}</p>}
+                  </li>)}</ol>:<p>لا توجد إجراءات مسجلة قبل تفعيل السجل.</p>}
                 </details>
                 {r.receipt && (
                   <section className="receiptReview">
@@ -726,7 +771,7 @@ export default function Dashboard() {
                       {r.status === "Waiting" &&
                       (r.paymentRequired ?? r.feeAmount > 0)
                         ? "تخصيص المقعد وطلب الدفع"
-                        : "تأكيد الطلب"}
+                        : r.receiptStatus !== 'accepted' ? "تأكيد الطلب بدون وصل" : "تأكيد الطلب"}
                     </button>
                     <button
                       className="danger"

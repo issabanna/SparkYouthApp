@@ -76,6 +76,24 @@ const db=http.createServer(async(req,res)=>{try{
   result=await (await api.get(base+'/api/registrations',{headers:owner})).json();assert.equal(result.records[0].status,'Confirmed');assert.equal(result.records[0].instructionText,'APPROVED SECRET');
   await page.reload();await page.getByRole('tab',{name:'الأنشطة',exact:true}).click();await page.getByRole('button',{name:'تسجيلاتي',exact:true}).click();await page.getByText('APPROVED SECRET',{exact:true}).waitFor();assert.equal(await page.getByText('PAYMENT INSTRUCTIONS',{exact:true}).count(),0);assert.deepEqual(browserErrors,[]);
   const publicData=await (await api.get(base+'/api/content')).json();assert.ok(!JSON.stringify(publicData).includes('APPROVED SECRET'));
+  const initialAudit=rows.get(id).record.auditLog;
+  for(const action of ['submitted','receipt_uploaded','receipt_rejected','receipt_accepted_and_approved'])assert.ok(initialAudit.some(e=>e.action===action));
+  assert.equal(result.records[0].auditLog,undefined);
+  const waivedSubmission=await send(owner,{action:'submit',activityId:activity.id,name:'Parent',details:{gender:'male',tentNumber:'2'},consent:true,auditLog:[{action:'forged'}]});
+  const waivedData=await waivedSubmission.json(),waiverId=waivedData.recordId,waiverRecord=waivedData.records.find(r=>r.id===waiverId);
+  assert.equal(rows.get(waiverId).record.auditLog.length,1);assert.equal(rows.get(waiverId).record.auditLog[0].action,'submitted');
+  for(const reason of [undefined,'  ','x'])assert.equal((await admin.post(base+'/api/admin/registrations',{data:{action:'approveWithoutReceipt',id:waiverId,reason}})).status(),409);
+  assert.equal(rows.get(waiverId).record.status,'Pending');assert.equal(rows.get(waiverId).record.auditLog.length,1);
+  assert.equal((await api.post(base+'/api/admin/registrations',{data:{action:'approveWithoutReceipt',id:waiverId,reason:'forged approval'}})).status(),401);
+  await adminPage.reload();await adminPage.getByRole('button',{name:'طلبات التسجيل',exact:true}).click();
+  await adminPage.locator('article').filter({hasText:waiverRecord.reference}).getByRole('button',{name:'تأكيد الطلب بدون وصل',exact:true}).click();
+  assert.equal(await adminPage.getByRole('button',{name:'حفظ السبب وتأكيد الطلب',exact:true}).isDisabled(),true);
+  const reason='تم استلام المبلغ نقدًا لدى الإدارة';await adminPage.getByLabel('سبب التأكيد بدون وصل',{exact:false}).fill(reason);await adminPage.getByRole('button',{name:'حفظ السبب وتأكيد الطلب',exact:true}).click();
+  await adminPage.getByText('تم تأكيد الطلب بدون وصل وحفظ السبب في سجل الإجراءات.',{exact:true}).waitFor();
+  const waived=rows.get(waiverId).record;assert.equal(waived.status,'Confirmed');assert.equal(waived.receiptStatus,'notSubmitted');assert.equal(waived.paymentWaiver.reason,reason);assert.equal(waived.auditLog.length,2);assert.equal(waived.auditLog[1].action,'approved_without_receipt');assert.equal(waived.auditLog[1].reason,reason);assert.match(waived.auditLog[1].actor.session,/^[a-f0-9]{12}$/);
+  const ownWaived=(await (await api.get(base+'/api/registrations',{headers:owner})).json()).records.find(r=>r.id===waiverId);assert.equal(ownWaived.auditLog,undefined);assert.equal(ownWaived.paymentWaiver,undefined);assert.equal(ownWaived.status,'Confirmed');
+  const auditCard=adminPage.locator('article').filter({hasText:waiverRecord.reference});await auditCard.getByText('سجل إجراءات الطلب (2)',{exact:true}).click();await auditCard.getByText('السبب: '+reason,{exact:true}).waitFor();
+  console.log('PASS: mandatory waiver justification in UI and API, unauthorized/forged overrides denied, receipt remains unaccepted, atomic private audit and visible admin history');
   await adminPage.getByRole('button',{name:'المخيمات والأنشطة',exact:true}).click();await adminPage.getByRole('button',{name:'تعديل',exact:true}).click();
   assert.equal(await adminPage.getByText('استخدام رابط صورة بدل الرفع',{exact:true}).count(),0);assert.equal(await adminPage.getByLabel('رابط الصورة',{exact:true}).count(),0);
   await adminPage.getByRole('button',{name:'استخدام الصورة الافتراضية',exact:true}).click();
@@ -96,6 +114,7 @@ const db=http.createServer(async(req,res)=>{try{
   const c=await makeOwner(),d=await makeOwner();const racing=await Promise.all([c,d].map(headers=>send(headers,{action:'submit',activityId:activity.id,name:'Concurrent camper',details:{gender:'male',tentNumber:'1'},consent:true})));
   assert.deepEqual(racing.map(r=>r.status()).sort(),[200,409]);assert.equal([...rows.values()].filter(r=>r.record.details.tentNumber===1).length,1);
   assert.equal((await api.post(base+'/api/admin/registrations',{data:{action:'receipt',id,decision:'accepted'}})).status(),401);
+  const winner=racing.findIndex(r=>r.status()===200),winningData=await racing[winner].json();assert.equal((await send([c,d][winner],{action:'cancel',id:winningData.recordId})).status(),200);assert.equal(rows.get(winningData.recordId).record.auditLog.at(-1).action,'cancelled');
   console.log('PASS: real Next APIs + mocked Supabase RPC contract: ownership isolation, private receipt dashboard, rejection/re-upload, approval-only instructions, concurrent tent allocation, admin authorization; conflicts retried:',conflicts);
   await admin.dispose();
  }catch(e){console.error(log);if(debugPage)console.error((await debugPage.locator('body').innerText()).slice(-6000));console.error([...rows.values()].map(r=>({id:r.record.id,status:r.record.status,receiptStatus:r.record.receiptStatus})));throw e;}finally{if(browser)await browser.close();await api.dispose();server.kill('SIGTERM');db.close();}

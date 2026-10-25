@@ -42,7 +42,8 @@ export async function POST(request){
    if(body.action==='submit'){
     if(records.filter(r=>r.ownerKey===owner).length>=50)throw Error('تجاوزت حد التسجيلات لهذا النشاط.');
     result=shared.submitRegistration({...activity,registrationTestMode:content.registrationTestMode===true},user,body.details||{},records,body.consent===true);
-    if(result.error)throw Error(result.error);return result.record;
+    if(result.error)throw Error(result.error);
+    return shared.appendRegistrationAction(result.record,{action:'submitted',actor:{type:'camper'}});
    }
    const fresh=await getRegistration(body.id);
    if(!fresh||fresh.owner_hash!==owner)throw Error('الطلب غير موجود.');
@@ -51,7 +52,7 @@ export async function POST(request){
    else if(body.action==='cancel')result=shared.changeRegistrationStatus(current,body.id,'Cancelled',content.activities);
    else throw Error('إجراء غير صالح.');
    if(result.error)throw Error(result.error);
-   return result.records.find(r=>r.id===body.id);
+   return shared.appendRegistrationAction(result.records.find(r=>r.id===body.id),{action:body.action==='receipt'?'receipt_uploaded':'cancelled',actor:{type:'camper'},before:fresh.record});
   });
   return reply({...await ownerResponse(owner),recordId:record.id});
  }catch(error){

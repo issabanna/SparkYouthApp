@@ -11,3 +11,11 @@ Receipts and participant documents are stored in private registration JSON, neve
 This is still a preview login: ownership uses an unguessable device session token stored in browser storage, or the app's private native document directory. Owners can return from the same browser/device after closing the app. Clearing browser/app data loses that session; signing in on another device does not restore it. Real account authentication and recovery are a separate feature. Previous browser-only registrations are not automatically imported because their ownership and image data cannot be verified by the shared backend. Native users need a rebuilt APK for these changes.
 
 If Supabase is configured but the registration migration is absent, the app shows a setup/unavailable error and blocks shared submission; it does not pretend a local-only request reached the dashboard. Local development without Supabase retains the explicitly labelled local preview.
+
+## Approvals without a receipt and audit history
+
+**تأكيد الطلب بدون وصل** opens a required justification box. **حفظ السبب وتأكيد الطلب** approves only after the server validates a 3–1000 character reason and the existing capacity/tent rules. The override stores a `paymentWaiver`; it does not pretend a receipt was uploaded or accepted. Normal status changes cannot bypass this explicit route.
+
+Each registration's **سجل إجراءات الطلب** shows successful submissions, receipt uploads/re-uploads, receipt rejection or acceptance with approval, seat allocation/payment requests, approval, rejection, cancellation, and approvals without a receipt. Events are appended on the server in the same atomic update as the registration. Each stores time, actor, before/after statuses and tent, and the override reason when applicable. History begins when this feature is deployed; older actions are not fabricated retroactively. Audit logs and waiver notes are returned only to authenticated admins, not to the owner or public content API.
+
+The current shared admin password identifies an authenticated admin **session**, not an individual staff member. Times display in Asia/Amman. No additional SQL migration is required: the audit trail is stored inside the existing private registration JSON.

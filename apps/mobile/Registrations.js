@@ -20,6 +20,7 @@ import { CampIdentity, CampExtra, RegistrationChoices, pickPreviewImage } from "
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   displayRange,
+  appendRegistrationAction,
   registrationStatusLabel,
   registrationInstructions,
   saveReceipt,
@@ -303,8 +304,9 @@ export default function Registrations({ content, user, onDone }) {
       setMessage(result.error);
       return;
     }
-    if (persist([...latest, result.record])) {
-      setSuccess(result.record);
+    const audited=appendRegistrationAction(result.record,{action:'submitted',actor:{type:'camper'}});
+    if (persist([...latest, audited])) {
+      setSuccess(audited);
       setStep(successStep);
     }
   };
@@ -359,7 +361,8 @@ export default function Registrations({ content, user, onDone }) {
       setMessage(result.error);
       return;
     }
-    if (persist(result.records)) {
+    const audited=result.records.map(r=>r.id===receiptId?appendRegistrationAction(r,{action:'receipt_uploaded',actor:{type:'camper'},before:latest.find(x=>x.id===receiptId)}):r);
+    if (persist(audited)) {
       setReceiptId(null);
       setMessage("تم حفظ الوصل. بانتظار مراجعة الإدارة في المعاينة.");
     }
@@ -386,7 +389,7 @@ export default function Registrations({ content, user, onDone }) {
       activities,
     );
     if (r.error) setMessage(r.error);
-    else persist(r.records);
+    else persist(r.records.map(record=>record.id===cancelId?appendRegistrationAction(record,{action:'cancelled',actor:{type:'camper'},before:latest.find(x=>x.id===cancelId)}):record));
     setCancelId(null);
   };
   const field = (key, label, props = {}) => (

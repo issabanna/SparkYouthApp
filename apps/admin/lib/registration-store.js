@@ -13,7 +13,8 @@ export async function mutateRegistration(activityId,ownerHash,transform){
  throw new Error('تغيرت الأماكن أثناء التسجيل. يرجى إعادة المحاولة.');
 }
 export function displayRegistration(record,admin=false){
- const {ownerKey,hasReceipt,hasIdDocument,...safe}=record;
+ const {ownerKey,hasReceipt,hasIdDocument,auditLog,paymentWaiver,...safe}=record;
+ if(admin){safe.auditLog=auditLog||[];if(paymentWaiver)safe.paymentWaiver=paymentWaiver;}
  if(hasReceipt)safe.receipt=admin?{uri:`/api/admin/registrations/${encodeURIComponent(record.id)}/image?kind=receipt`}:{};
  if(hasIdDocument)safe.details={...safe.details,idDocument:admin?{uri:`/api/admin/registrations/${encodeURIComponent(record.id)}/image?kind=id`}:{}};
  return safe;
