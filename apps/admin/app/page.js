@@ -20,6 +20,7 @@ import {
 } from "../../../packages/shared";
 const sections = [
   ["overview", "نظرة عامة"],
+  ["parameters", "الإعدادات العامة"],
   ["announcements", "إعلانات الصفحة الرئيسية"],
   ["activities", "المخيمات والأنشطة"],
   ["registrations", "طلبات التسجيل"],
@@ -440,14 +441,8 @@ export default function Dashboard() {
             {message}
           </p>
         )}
-        {section === "overview" ? (
-          <>
-            <label className="checkbox">
-              <input type="checkbox" checked={content.registrationTestMode === true}
-                onChange={e => persist({ ...content, registrationTestMode: e.target.checked })} />
-              وضع تجربة التسجيل — جعل بيانات المشاركين اختيارية
-            </label>
-            <section className="panel">
+        {section === "parameters" ? (
+            <section className="panel editor">
               <h2>خيارات التسجيل المشتركة لجميع المخيمات</h2>
               <p>تعديل هذه القوائم يطبّق على جميع المخيمات. خيار واحد في كل سطر؛ اترك المدن والمدارس فارغة للسماح بالكتابة الحرة.</p>
               {[["cityOptions", "خيارات المدن"], ["schoolOptions", "خيارات المدارس"], ["shirtOptions", "مقاسات التيشيرت"]].map(([key, label]) => (
@@ -455,6 +450,13 @@ export default function Dashboard() {
                   onChange={e => persist(normalizeContent({ ...content, registrationOptions: { ...content.registrationOptions, [key]: [...new Set(e.target.value.split("\n"))] } }))} /></label>
               ))}
             </section>
+        ) : section === "overview" ? (
+          <>
+            <label className="checkbox">
+              <input type="checkbox" checked={content.registrationTestMode === true}
+                onChange={e => persist({ ...content, registrationTestMode: e.target.checked })} />
+              وضع تجربة التسجيل — جعل بيانات المشاركين اختيارية
+            </label>
             <div className="cards">
               {[
                 [
