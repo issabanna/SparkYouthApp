@@ -415,10 +415,6 @@ export default function Registrations({ content, user, onDone }) {
         {[
           ["all", "الكل"],
           ["camp", "مخيمات"],
-          ["trip", "رحلات"],
-          ["training", "تدريب"],
-          ["conference", "مؤتمرات"],
-          ["hike", "مسارات مشي"],
           ["event", "فعاليات"],
           ["mine", "تسجيلاتي"],
         ].map(([id, label]) => (
@@ -549,7 +545,7 @@ export default function Registrations({ content, user, onDone }) {
         <>
           {activities
             .filter(
-              (a) => a.published && (filter === "all" || a.kind === filter),
+              (a) => a.published && (filter === "all" || (filter === "event" ? a.kind !== "camp" : a.kind === filter)),
             )
             .map((a) => {
               const registration = activeRegistration(records, a.id, user),
