@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, ScrollView, Modal, Image, Linking, St
 import {pickProfilePhoto} from './profile-photo';
 import { leaderRequest, accountRequest } from './registration-client';
 import AccountIdentity from './AccountIdentity';
+import BirthDatePicker from './BirthDatePicker';
 import {ChangePassword} from './AuthScreen';
 import BusApp from './BusApp';
 import LeaderEvaluation, { evaluationLabels } from './LeaderEvaluation';
@@ -23,7 +24,7 @@ const Button = ({
 }]}><Text style={[s.buttonText, orange && {
     color: '#fff'
   }]}>{children}</Text></Pressable>;
-const empty = Object.fromEntries(leaderFields.map(([k]) => [k, '']));
+const empty = Object.fromEntries([...leaderFields.map(([k]) => [k, '']),['dob','']]);
 export default function Account({
   user,
   profile,
@@ -151,6 +152,7 @@ export default function Account({
         }
         setForm({
           ...empty,
+          ...account?.details,
           ...application?.details
         });
         setConsent(false);
@@ -192,13 +194,13 @@ export default function Account({
  {screen === 'privacy' && <><Text style={s.title}>سياسة الخصوصية</Text><Text style={s.text}>{content.accountSettings?.privacyText || 'لم تنشر الإدارة سياسة الخصوصية بعد.'}</Text></>}
  {screen === 'contact' && <><Text style={s.title}>تواصل معنا</Text><Text selectable style={s.text}>{content.accountSettings?.contactText || 'لم تضف الإدارة تفاصيل التواصل بعد.'}</Text></>}
  {screen === 'pending' && <><Text style={s.title}>طلبك بانتظار موافقة الإدارة</Text><Text style={s.text}>استلمنا طلب الإرشاد. عند اعتماده سيظهر زر بوابة المرشدين في حسابك.</Text><Button disabled={busy} onPress={() => act(refresh)}>تحديث الحالة</Button></>}
- {screen === 'apply' && <><Text style={s.title}>طلب التسجيل كمرشد</Text><Text style={s.heading}>معلومات الحساب</Text>{[...accountFields, ['dob', 'تاريخ الميلاد'], ['gender', 'الجنس']].map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text><Text style={s.text}>{key === 'gender' ? account?.details[key] === 'male' ? 'ذكر' : 'أنثى' : account?.details[key] || '—'}</Text></View>)}<Button onPress={() => setScreen('identity')}>تعديل معلومات الحساب</Button><Text style={s.heading}>معلومات إضافية للإرشاد</Text>{leaderFields.map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text>{leaderChoices[key] ? <Picker accessibilityLabel={label} selectedValue={form[key]} onValueChange={v => setForm(f => ({
+ {screen === 'apply' && <><Text style={s.title}>طلب التسجيل كمرشد</Text><Text style={s.heading}>معلومات الحساب</Text>{[...accountFields, ['gender', 'الجنس']].map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text><Text style={s.text}>{key === 'gender' ? account?.details[key] === 'male' ? 'ذكر' : 'أنثى' : account?.details[key] || '—'}</Text></View>)}<Button onPress={() => setScreen('identity')}>تعديل معلومات الحساب</Button><Text style={s.heading}>معلومات إضافية للإرشاد</Text>{leaderFields.map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text>{leaderChoices[key] ? <Picker accessibilityLabel={label} selectedValue={form[key]} onValueChange={v => setForm(f => ({
                 ...f,
                 [key]: v
               }))}><Picker.Item label="اختر" value="" />{leaderChoices[key].map(v => <Picker.Item key={v} label={v} value={v} />)}</Picker> : <TextInput accessibilityLabel={label} value={form[key]} maxLength={500} onChangeText={v => setForm(f => ({
                 ...f,
                 [key]: v
-              }))} style={s.input} />}</View>)}<Pressable accessibilityRole="checkbox" accessibilityState={{
+              }))} keyboardType={key==='phone'?'phone-pad':'default'} style={s.input} />}</View>)}<BirthDatePicker value={form.dob} onChange={dob=>setForm(f=>({...f,dob}))}/><Pressable accessibilityRole="checkbox" accessibilityState={{
               checked: consent
             }} onPress={() => setConsent(!consent)} style={s.button}><Text style={s.text}>{consent ? '☑' : '☐'} أوافق على إرسال هذه المعلومات للإدارة لمراجعة طلب الإرشاد.</Text></Pressable><Button orange disabled={busy || !consent} onPress={submit}>{busy ? 'جارٍ إرسال الطلب…' : 'إرسال طلب الإرشاد'}</Button></>}
  {screen === 'portal' && approved && <>{!selectedEvent ? <><Text style={s.title}>بوابة المرشدين</Text><Text style={s.heading}>مخيماتي وأنشطتي</Text><Text style={s.text}>تكليفاتك المحددة من الإدارة</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}>{(data.portal?.activities || []).map(a => <Pressable key={a.id} accessibilityRole="button" onPress={() => {

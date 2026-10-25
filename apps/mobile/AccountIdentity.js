@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import BirthDatePicker from './BirthDatePicker';
 import { accountRequest } from './registration-client';
 const {
   accountFields
@@ -11,7 +10,7 @@ export default function AccountIdentity({
   onSaved,
   cityOptions = []
 }) {
-  const [details, setDetails] = useState(initial || Object.fromEntries([...accountFields.map(([k]) => [k, '']), ['dob', ''], ['gender', '']])),
+  const [details, setDetails] = useState(initial || Object.fromEntries([...accountFields.map(([k]) => [k, '']), ['gender', '']])),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   useEffect(() => { if (initial) setDetails(initial); }, [initial]);
@@ -39,7 +38,7 @@ export default function AccountIdentity({
         fontFamily: 'Tajawal',
         textAlign: 'right',
         marginVertical: 8
-      }}>{label}</Text>{key === 'city' && cityOptions.length ? <Picker accessibilityLabel={label} selectedValue={details[key]} onValueChange={v => update(key, v)}><Picker.Item label="اختر المدينة" value="" />{cityOptions.map(c => <Picker.Item key={c} label={c} value={c} />)}</Picker> : <TextInput accessibilityLabel={label} style={input} value={details[key]} maxLength={200} keyboardType={key === 'phone' ? 'phone-pad' : 'default'} onChangeText={v => update(key, v)} />}</View>)}<BirthDatePicker value={details.dob} onChange={v => update('dob', v)} /><Text style={{
+      }}>{label}</Text>{key === 'city' && cityOptions.length ? <Picker accessibilityLabel={label} selectedValue={details[key]} onValueChange={v => update(key, v)}><Picker.Item label="اختر المدينة" value="" />{cityOptions.map(c => <Picker.Item key={c} label={c} value={c} />)}</Picker> : <TextInput accessibilityLabel={label} style={input} value={details[key]} maxLength={200} keyboardType={key === 'phone' ? 'phone-pad' : 'default'} onChangeText={v => update(key, v)} />}</View>)}<Text style={{
       fontFamily: 'Tajawal',
       textAlign: 'right'
     }}>الجنس</Text><Picker accessibilityLabel="الجنس" selectedValue={details.gender} onValueChange={v => update('gender', v)}><Picker.Item label="اختر الجنس" value="" /><Picker.Item label="ذكر" value="male" /><Picker.Item label="أنثى" value="female" /></Picker>{!!error && <Text accessibilityRole="alert" style={{

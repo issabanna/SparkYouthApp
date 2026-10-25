@@ -27,7 +27,7 @@ export async function GET(request) {
       content = await registrationContent(),
       records = await listRegistrations(),
       nationalId = normalizeId(subject.details.nationalId);
-    const account = (await listRegistrations(row.owner_hash)).find(r => r.activityId === leaders.accountActivityId && nationalId && normalizeId(r.details.nationalId) === nationalId);
+    const account = (await listRegistrations(row.owner_hash)).find(r => r.activityId === leaders.accountActivityId && (section!=='campers'||nationalId&&normalizeId(r.details.nationalId)===nationalId));
     const visibleCampIds = new Set((access.record.assignments || []).map(a => a.activityId));
     const isCamper = section === 'campers',
       assigned = leaders.assignmentOf(subject, activity);

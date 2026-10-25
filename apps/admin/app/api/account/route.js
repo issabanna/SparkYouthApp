@@ -46,7 +46,7 @@ export async function POST(request) {
         recordType: 'account',
         authUserId:(await auth.userForRequest(request)).id,
         status: 'AccountActive',
-        details,
+        details:{...current?.details,...details},
         photo: body.photo === undefined ? current?.photo || '' : body.photo,
         updatedAt: new Date().toISOString()
       };

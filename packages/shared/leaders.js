@@ -1,22 +1,15 @@
 const leaderActivityId = '__leader_applications__',
   accountActivityId = '__accounts__';
-const accountFields = [['englishFirstName', 'الاسم الأول بالإنجليزية'], ['englishFatherName', 'اسم الأب بالإنجليزية'], ['englishLastName', 'اسم العائلة بالإنجليزية'], ['city', 'مدينة السكن'], ['phone', 'رقم الهاتف'], ['nationalId', 'الرقم الوطني / رقم الهوية']];
-const leaderFields = [['maritalStatus', 'الحالة الاجتماعية'], ['education', 'التعليم'], ['employmentStatus', 'حالة العمل'], ['workplace', 'مكان العمل أو الدراسة'], ['church', 'اسم الكنيسة'], ['previousCamp', 'هل كنت في مخيم جلعاد من قبل؟']];
+const accountFields = [['englishFirstName', 'الاسم الأول بالإنجليزية'], ['englishFatherName', 'اسم الأب بالإنجليزية'], ['englishLastName', 'اسم العائلة بالإنجليزية']];
+const leaderFields = [['city','مدينة السكن'],['phone','رقم الهاتف'],['nationalId','الرقم الوطني / رقم الهوية'],['maritalStatus', 'الحالة الاجتماعية'], ['education', 'التعليم'], ['employmentStatus', 'حالة العمل'], ['workplace', 'مكان العمل أو الدراسة'], ['church', 'اسم الكنيسة'], ['previousCamp', 'هل كنت في مخيم جلعاد من قبل؟']];
 function validateAccountDetails(input) {
   const details = {};
   for (const [key] of accountFields) {
     if (typeof input?.[key] !== 'string' || !input[key].trim() || input[key].length > 200) throw Error('أكمل بيانات الحساب.');
     details[key] = input[key].trim();
   }
-  if (!/^[A-Za-z0-9-]{4,30}$/.test(details.nationalId)) throw Error('أدخل الرقم الوطني أو رقم الهوية الصحيح.');
-  if (!/^\d{10}$/.test(details.phone)) throw Error('أدخل رقم هاتف من 10 أرقام.');
   if (!['male', 'female'].includes(input.gender)) throw Error('اختر الجنس.');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dob || '') || !Number.isFinite(Date.parse(input.dob)) || new Date(input.dob).toISOString().slice(0, 10) !== input.dob || input.dob > new Date().toISOString().slice(0, 10) || input.dob < '1900-01-01') throw Error('اختر تاريخ ميلاد صحيحًا.');
-  return {
-    ...details,
-    dob: input.dob,
-    gender: input.gender
-  };
+  return {...details,gender:input.gender};
 }
 const leaderChoices = {
   maritalStatus: ['أعزب / عزباء', 'متزوج / متزوجة', 'مطلق / مطلقة', 'أرمل / أرملة'],
@@ -31,7 +24,10 @@ function validateLeaderDetails(input) {
     details[key] = input[key].trim();
     if (leaderChoices[key] && !leaderChoices[key].includes(details[key])) throw Error('اختر إجابة من القائمة.');
   }
-  return details;
+  if (!/^[A-Za-z0-9-]{4,30}$/.test(details.nationalId)) throw Error('أدخل الرقم الوطني أو رقم الهوية الصحيح.');
+  if (!/^\d{10}$/.test(details.phone)) throw Error('أدخل رقم هاتف من 10 أرقام.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dob || '') || !Number.isFinite(Date.parse(input.dob)) || new Date(input.dob).toISOString().slice(0,10)!==input.dob || input.dob>new Date().toISOString().slice(0,10) || input.dob<'1900-01-01')throw Error('اختر تاريخ ميلاد صحيحًا.');
+  return {...details,dob:input.dob};
 }
 function safeLinks(links) {
   return (Array.isArray(links) ? links : []).filter(l => typeof l?.title === 'string' && l.title.trim() && typeof l.url === 'string' && /^https:\/\//i.test(l.url) && (() => {

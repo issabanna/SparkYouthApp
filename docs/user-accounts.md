@@ -17,7 +17,7 @@ These return URLs remain useful for any other Supabase email links; new app sign
 
 ## Sessions and profile
 
-Email/password comes first; basic account information is collected once after authenticated sign-up. The leader form continues to preview that saved profile. Account photos, applications, registrations and bus permissions use the authenticated owner's stable UUID mapping. The user can change their password in حسابي using their current password, and log out through the same menu.
+Email/password comes first; only the three English name parts and gender are collected after authenticated sign-up. City, phone, national ID and date of birth are collected in the leader application instead. Existing saved details are preserved and prefilled in that application. The leader form continues to preview that saved profile. Account photos, applications, registrations and bus permissions use the authenticated owner's stable UUID mapping. The user can change their password in حسابي using their current password, and log out through the same menu.
 
 Session tokens are stored in localStorage on web and the app's private FileSystem document directory on native. Expired sessions refresh through the server; failed/invalid refresh returns the user to login. Web logout clears authentication and the current profile view/cache. Local learning progress remains a separate preview feature, not a shared learning database. The existing APK must be rebuilt to include the new login screens.
 
