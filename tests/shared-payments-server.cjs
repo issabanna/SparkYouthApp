@@ -8,14 +8,22 @@ const {demoImage,pickImage}=require('./camp-fixtures.cjs');
 const root=path.resolve(__dirname,'..'),base='http://localhost:3051';
 const password='test-only-payment-admin-password';
 const activity=shared.normalizeActivity({id:'shared-camp',kind:'camp',title:'Shared payment camp',text:'Test',published:true,capacity:20,tentsEnabled:true,fees:10,requireReceipt:true,tents:shared.defaultTents().map(t=>({...t,capacity:1})),afterRegistrationInstructions:'PAYMENT INSTRUCTIONS',approvedInstructions:'APPROVED SECRET'});
-const content=shared.normalizeContent({...shared.defaultContent,registrationTestMode:true,activities:[activity]});
-const rows=new Map(),versions=new Map();let conflicts=0,debugPage,forceConflict=true;
+let content=shared.normalizeContent({...shared.defaultContent,registrationTestMode:true,activities:[activity]});
+const rows=new Map(),versions=new Map(),photos=new Map();let conflicts=0,debugPage,forceConflict=true;
 function summary(r){const {receipt,...rest}=structuredClone(r);delete rest.details.idDocument;return {...rest,hasReceipt:!!r.receipt?.uri,hasIdDocument:!!r.details.idDocument?.uri};}
 const db=http.createServer(async(req,res)=>{try{
- const url=new URL(req.url,'http://localhost');let body='';for await(const chunk of req)body+=chunk;const value=body?JSON.parse(body):{};
+ const url=new URL(req.url,'http://localhost');const chunks=[];for await(const chunk of req)chunks.push(chunk);const bytes=Buffer.concat(chunks);const value=(req.headers['content-type']||'').includes('application/json')&&bytes.length?JSON.parse(bytes.toString()):{};
  assert.equal(req.headers.apikey,'test-service-role-only');
  let result;
- if(url.pathname==='/rest/v1/spark_content')result=[{content}];
+ if(url.pathname.startsWith('/storage/v1/object/')){
+  const id=url.pathname.split('/').pop();
+  if(req.method==='POST'){await new Promise(r=>setTimeout(r,200));photos.set(id,bytes);res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({Key:'spark-content-media/'+id}));return;}
+  if(!photos.has(id)){res.writeHead(404);res.end();return;}
+  res.writeHead(200,{'Content-Type':'image/jpeg'});res.end(photos.get(id));return;
+ }
+ if(url.pathname==='/rest/v1/spark_content'){
+  if(req.method==='POST'){content=value.content;result=null;}else result=[{content}];
+ }
  else if(url.pathname==='/rest/v1/spark_registrations'){const id=url.searchParams.get('id').replace(/^eq\./,'');const row=rows.get(id);result=row?[row]:[];}
  else if(url.pathname.endsWith('/spark_registration_list'))result=[...rows.values()].filter(r=>!value.p_owner_hash||r.owner_hash===value.p_owner_hash).map(r=>summary(r.record));
  else if(url.pathname.endsWith('/spark_registration_occupancy'))result=[...rows.values()].map(r=>r.record).filter(r=>['Pending','Confirmed'].includes(r.status)).map(r=>({id:r.id,activityId:r.activityId,status:r.status,details:{tentNumber:r.details.tentNumber}}));
@@ -68,6 +76,23 @@ const db=http.createServer(async(req,res)=>{try{
   result=await (await api.get(base+'/api/registrations',{headers:owner})).json();assert.equal(result.records[0].status,'Confirmed');assert.equal(result.records[0].instructionText,'APPROVED SECRET');
   await page.reload();await page.getByRole('tab',{name:'الأنشطة',exact:true}).click();await page.getByRole('button',{name:'تسجيلاتي',exact:true}).click();await page.getByText('APPROVED SECRET',{exact:true}).waitFor();assert.equal(await page.getByText('PAYMENT INSTRUCTIONS',{exact:true}).count(),0);assert.deepEqual(browserErrors,[]);
   const publicData=await (await api.get(base+'/api/content')).json();assert.ok(!JSON.stringify(publicData).includes('APPROVED SECRET'));
+  await adminPage.getByRole('button',{name:'المخيمات والأنشطة',exact:true}).click();await adminPage.getByRole('button',{name:'تعديل',exact:true}).click();
+  assert.equal(await adminPage.getByText('استخدام رابط صورة بدل الرفع',{exact:true}).count(),0);assert.equal(await adminPage.getByLabel('رابط الصورة',{exact:true}).count(),0);
+  await adminPage.getByRole('button',{name:'استخدام الصورة الافتراضية',exact:true}).click();
+  assert.equal(await adminPage.getByAltText('معاينة الصورة 1',{exact:true}).getAttribute('src'),'/media/camp.png');
+  await adminPage.getByLabel('رفع صورة النشاط',{exact:false}).setInputFiles({name:'invalid.jpg',mimeType:'image/jpeg',buffer:Buffer.from('invalid-image')});
+  await adminPage.getByText('تعذّر قراءة الصورة.',{exact:false}).first().waitFor();
+  const uploading=adminPage.waitForRequest(r=>r.url().endsWith('/api/media')&&r.method()==='POST');
+  await adminPage.getByLabel('رفع صورة النشاط',{exact:false}).setInputFiles(path.join(__dirname,'../apps/admin/public/media/team.png'));await uploading;await adminPage.getByLabel('العنوان',{exact:true}).fill('Camp photo changed while uploading');
+  await adminPage.getByText('تم رفع الصورة بنجاح.',{exact:false}).first().waitFor();assert.equal(await adminPage.getByLabel('العنوان',{exact:true}).inputValue(),'Camp photo changed while uploading');
+  await adminPage.getByAltText('معاينة الصورة 1',{exact:true}).evaluate(img=>new Promise((resolve,reject)=>{if(img.complete&&img.naturalWidth)return resolve();img.onload=resolve;img.onerror=()=>reject(Error('Upload preview failed'));}));
+  await adminContext.clearCookies();await adminPage.getByLabel('رفع صورة النشاط',{exact:false}).setInputFiles(path.join(__dirname,'../apps/admin/public/media/team.png'));await adminPage.getByLabel('تجديد جلسة رفع الصور').waitFor();
+  await adminPage.getByLabel('تجديد جلسة رفع الصور').fill(password);await adminPage.getByRole('button',{name:'تسجيل الدخول ومتابعة التحرير',exact:true}).click();await adminPage.getByText('تم تجديد الجلسة.',{exact:false}).waitFor();
+  await adminPage.getByLabel('رفع صورة النشاط',{exact:false}).setInputFiles(path.join(__dirname,'../apps/admin/public/media/team.png'));await adminPage.getByText('تم رفع الصورة بنجاح.',{exact:false}).first().waitFor();
+  const photoPath=await adminPage.getByAltText('معاينة الصورة 1',{exact:true}).getAttribute('src');assert.match(photoPath,/^\/api\/media\/[a-f0-9-]+\.jpeg$/);
+  await adminPage.getByRole('button',{name:'حفظ المحتوى',exact:true}).click();await adminPage.getByRole('button',{name:'نشر التغييرات للتطبيق',exact:true}).click();await adminPage.getByText('تم النشر.',{exact:false}).waitFor();
+  assert.equal((await (await api.get(base+'/api/content')).json()).activities[0].image,photoPath);assert.equal((await api.get(base+photoPath)).status(),200);
+  console.log('PASS: real authenticated photo upload/storage/download, invalid-image feedback, expired-session reauthentication without losing edits, default images, no manual links, save and publish');
   const c=await makeOwner(),d=await makeOwner();const racing=await Promise.all([c,d].map(headers=>send(headers,{action:'submit',activityId:activity.id,name:'Concurrent camper',details:{gender:'male',tentNumber:'1'},consent:true})));
   assert.deepEqual(racing.map(r=>r.status()).sort(),[200,409]);assert.equal([...rows.values()].filter(r=>r.record.details.tentNumber===1).length,1);
   assert.equal((await api.post(base+'/api/admin/registrations',{data:{action:'receipt',id,decision:'accepted'}})).status(),401);

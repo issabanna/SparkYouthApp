@@ -15,7 +15,7 @@ const base=process.env.SPARK_TEST_URL||'http://localhost:3031';
    await p.getByRole('button',{name:section,exact:true}).click();
    await p.locator('article').first().getByRole('button',{name:'تعديل',exact:true}).click();
    await p.getByLabel(label,{exact:false}).setInputFiles(key==='galleries'?[image,image]:image);
-   await p.getByText('تم تجهيز الصور.',{exact:false}).waitFor();
+   await p.getByText('تم رفع الصورة بنجاح.',{exact:false}).first().waitFor();
    if(key==='galleries')await p.getByRole('button',{name:'حذف الصورة 5',exact:true}).click();
    await p.getByRole('button',{name:'حفظ المحتوى',exact:true}).click();
    const data=await p.evaluate(()=>JSON.parse(localStorage.getItem('spark-camp-content-v1')));

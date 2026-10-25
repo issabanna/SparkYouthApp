@@ -65,6 +65,8 @@ export default function Dashboard() {
   const [adminPassword,setAdminPassword]=useState('');
   const [cloudMessage,setCloudMessage]=useState('');
   const [busy,setBusy]=useState(false);
+  const [photoStatus,setPhotoStatus]=useState('');
+  const [photoNeedsLogin,setPhotoNeedsLogin]=useState(false);
   useEffect(()=>{
     let active=true;
     async function connect(){
@@ -307,9 +309,23 @@ export default function Dashboard() {
   async function storePhoto(file){
     const blob=await prepareImage(file);
     if(cloud!=='remote')return imageData(blob);
-    const response=await fetch('/api/media',{method:'POST',headers:{'Content-Type':blob.type},body:blob});
-    const result=await response.json();if(!response.ok)throw new Error(result.error);
-    return result.image;
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),30000);
+    try{
+      const response=await fetch('/api/media',{method:'POST',headers:{'Content-Type':blob.type},body:blob,signal:controller.signal});
+      if(response.status===401){setPhotoNeedsLogin(true);throw Error('انتهت جلسة الإدارة. سجّل الدخول أدناه ثم أعد اختيار الصورة.');}
+      let result;try{result=await response.json();}catch{throw Error('تعذّر رفع الصورة. حاول مجددًا.');}
+      if(!response.ok)throw Error(result.error||'تعذّر رفع الصورة.');
+      if(typeof result.image!=='string')throw Error('تعذّر حفظ الصورة. حاول مجددًا.');
+      setPhotoNeedsLogin(false);return result.image;
+    }catch(error){if(error.name==='AbortError')throw Error('استغرق رفع الصورة وقتًا طويلًا. تحقق من الاتصال ثم أعد المحاولة.');throw error;}
+    finally{clearTimeout(timeout)}
+  }
+  async function renewPhotoSession(){
+    setBusy(true);
+    try{const response=await fetch('/api/admin/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:adminPassword})});
+      if(!response.ok)throw Error('تعذّر تسجيل الدخول. تحقق من كلمة مرور الإدارة.');
+      setPhotoNeedsLogin(false);setPhotoStatus('تم تجديد الجلسة. أعد اختيار الصورة لرفعها.');
+    }catch(error){setPhotoStatus(error.message)}finally{setAdminPassword('');setBusy(false)}
   }
   async function uploadWelcomeImage(e){
     const file=e.target.files?.[0];e.target.value='';if(!file)return;
@@ -322,15 +338,14 @@ export default function Dashboard() {
   const uploadActivityImage = async (e) => {
     const files=Array.from(e.target.files || []);e.target.value='';
     if(!files.length)return;
-    setBusy(true);setMessage('جارٍ تجهيز الصور…');
+    const targetId=draft.id,targetSection=section;
+    setBusy(true);setPhotoStatus('جارٍ تجهيز الصورة ورفعها…');
     try{
-      const images=[];
-      for(const file of files){
-        images.push(await storePhoto(file));
-      }
-      if(section==='galleries')change('images',[...draft.images,...images]);else change('image',images[0]);
-      setMessage('تم تجهيز الصور. احفظ المحتوى'+(cloud==='remote'?' ثم انشر التغييرات للتطبيق.':'. الصور محفوظة في معاينة هذا المتصفح فقط حتى ربط التخزين.'));
-    }catch(error){setMessage(error.message)}finally{setBusy(false)}
+      const images=[];for(const file of files)images.push(await storePhoto(file));
+      setDraft(current=>current?.id===targetId ? {...current,...(targetSection==='galleries'?{images:[...(current.images||[]),...images]}:{image:images[0]})} : current);
+      const text='تم رفع الصورة بنجاح. احفظ المحتوى'+(cloud==='remote'?' ثم انشر التغييرات لتظهر في التطبيق.':'.');
+      setPhotoStatus(text);setMessage(text);
+    }catch(error){setPhotoStatus(error.message);setMessage(error.message)}finally{setBusy(false)}
   };
   const uploadLogo = (e) => {
     const file = e.target.files?.[0];
@@ -733,6 +748,7 @@ export default function Dashboard() {
                 disabled={!ready}
                 onClick={() => {
                   setDraft(emptyItem(section));
+                  setPhotoStatus('');
                   setMessage("");
                 }}
               >
@@ -779,9 +795,15 @@ export default function Dashboard() {
                 {['activities','announcements','galleries','journeys'].includes(section) && <>
                   <label>
                     {section==='galleries'?'رفع صور الألبوم':section==='activities'?'رفع صورة النشاط':section==='announcements'?'رفع صورة الإعلان':'رفع صورة المسار'}
-                    <input type="file" accept="image/png,image/jpeg,image/webp" multiple={section==='galleries'} onChange={uploadActivityImage} disabled={busy} />
-                    <small>اختر صورًا من جهازك حتى 10 ميغابايت للصورة؛ تُجهّز تلقائيًا للعرض.</small>
+                    <input type="file" accept="image/*" multiple={section==='galleries'} onChange={uploadActivityImage} disabled={busy} />
+                    <small>اختر صورة من جهازك حتى 20 ميغابايت؛ تُجهّز تلقائيًا للعرض. JPEG وPNG موصى بهما.</small>
                   </label>
+                  {photoStatus && <p role="status" className="status">{photoStatus}</p>}
+                  {photoNeedsLogin && <div className="panel">
+                    <label>تجديد جلسة رفع الصور<input type="password" autoComplete="current-password" value={adminPassword} onChange={e=>setAdminPassword(e.target.value)} /></label>
+                    <button type="button" disabled={busy || !adminPassword} onClick={renewPhotoSession}>تسجيل الدخول ومتابعة التحرير</button>
+                  </div>}
+                  {section!=='galleries' && <button type="button" disabled={busy} onClick={()=>{change('image','/media/camp.png');setPhotoStatus('تم اختيار الصورة الافتراضية. احفظ المحتوى ثم انشر التغييرات.');}}>استخدام الصورة الافتراضية</button>}
                   <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
                     {(section==='galleries'?draft.images:[draft.image]).filter(Boolean).map((image,index)=><div key={index}>
                       <img src={image} alt={'معاينة الصورة '+(index+1)} style={{width:120,height:90,objectFit:'cover',borderRadius:12}} />
@@ -789,37 +811,6 @@ export default function Dashboard() {
                     </div>)}
                   </div>
                 </>}
-                <details>
-                  <summary>استخدام رابط صورة بدل الرفع</summary>
-                {section === "galleries" ? (
-                  <label>
-                    روابط الصور · رابط واحد في كل سطر
-                    <textarea
-                      rows={4}
-                      value={draft.images.join("\n")}
-                      onChange={(e) =>
-                        change("images", e.target.value.split("\n"))
-                      }
-                    />
-                    <small>
-                      استخدم /media/camp.png أو /media/trail.png أو
-                      /media/team.png، أو رابط HTTPS لصورتك.
-                    </small>
-                  </label>
-                ) : (
-                  <label>
-                    رابط الصورة
-                    <input
-                      value={draft.image}
-                      onChange={(e) => change("image", e.target.value)}
-                    />
-                    <small>
-                      الصور المتاحة: /media/camp.png · /media/trail.png ·
-                      /media/team.png أو رابط HTTPS.
-                    </small>
-                  </label>
-                )}
-                </details>
                 {section === "activities" && (
                   <>
                     <label className="checkbox">
@@ -1180,11 +1171,11 @@ export default function Dashboard() {
                             <button
                               className="plain"
                               onClick={() =>
-                                setDraft(
+                                (setPhotoStatus(''),setDraft(
                                   section === "activities"
                                     ? normalizeActivity(item)
                                     : { ...item },
-                                )
+                                ))
                               }
                             >
                               تعديل

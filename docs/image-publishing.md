@@ -2,7 +2,7 @@
 
 The mobile sample camp, trail, team and logo images are bundled as native resources. They do not require a website download. `MediaImage` centralizes image resolution for native resources, uploaded data images and HTTPS/API images, and displays an explicit placeholder on failure.
 
-Admin upload controls cover activity images, announcements, learning images, galleries (multiple files with removal), and the logo. Photos up to 10 MB are resized in the browser without cropping and compressed before upload. PNG/JPEG/WebP are accepted; SVG is not accepted. Content photos are public-facing material, not identity or medical documents.
+Admin upload controls cover activity images, announcements, learning images, galleries (multiple files with removal), and the logo. Photos up to 20 MB are resized in the browser without cropping and compressed before upload. JPEG/PNG/WebP and other browser-decodable image formats are converted to JPEG; HEIC/HEIF may need conversion to JPEG first. SVG is not accepted. Manual image-link fields are removed; existing uploaded/default references are preserved. Upload progress/errors appear next to the editor photo control, with in-place session renewal and a default-image button. Content photos are public-facing material, not identity or medical documents.
 
 ## Supabase and Vercel setup
 
@@ -17,7 +17,7 @@ Admin requests use a signed, expiring HttpOnly/SameSite cookie (Secure over HTTP
 
 Without storage configuration the website continues its explicitly labeled, browser-only preview. Configured storage with missing/invalid admin credentials fails closed. Initial connection to an empty store preserves existing local preview edits for the first publish. Remote admin drafts are kept in memory, not written to browser storage, and only a successful publish confirms shared persistence.
 
-Image content endpoints do not implement real camper authentication, registration synchronization, or approved-leader content delivery. These remain separate backend work. Native image bundling/package verification is not a physical-device test.
+Image content endpoints do not implement real camper authentication or approved-leader content delivery. Shared registration synchronization now has separate private APIs; see `docs/registration-payments.md`. Native image bundling/package verification is not a physical-device test.
 
 ## Storage adapter and remaining backend work
 

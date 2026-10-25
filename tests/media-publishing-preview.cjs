@@ -24,7 +24,7 @@ const base=process.env.SPARK_TEST_URL||'http://localhost:3032';
  await p.locator('article').first().getByRole('button',{name:'تعديل',exact:true}).click();
  await p.getByLabel('العنوان',{exact:true}).fill('إعلان اختبار النشر');
  await p.getByLabel('رفع صورة الإعلان',{exact:false}).setInputFiles(path.join(__dirname,'../apps/admin/public/media/team.png'));
- await p.getByText('تم تجهيز الصور.',{exact:false}).waitFor();
+ await p.getByText('تم رفع الصورة بنجاح.',{exact:false}).first().waitFor();
  await p.getByRole('button',{name:'حفظ المحتوى',exact:true}).click();
  await p.getByRole('button',{name:'نظرة عامة',exact:true}).click();
  await p.getByLabel('رفع صورة الترحيب',{exact:true}).setInputFiles(path.join(__dirname,'../apps/admin/public/media/team.png'));
