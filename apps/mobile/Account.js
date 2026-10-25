@@ -7,7 +7,7 @@ import BirthDatePicker from './BirthDatePicker';
 import {ChangePassword} from './AuthScreen';
 import BusApp from './BusApp';
 import LeaderEvaluation, { evaluationLabels } from './LeaderEvaluation';
-import { Picker } from '@react-native-picker/picker';
+import { Picker } from './Picker';
 import MediaImage from './MediaImage';
 const {
   leaderFields,

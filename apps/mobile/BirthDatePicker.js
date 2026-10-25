@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { Picker } from './Picker';
 const iso = (year, month, day) => `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 export default function BirthDatePicker({ value, minimum, maximum, onChange, error }) {
   const today = new Date().toISOString().slice(0,10);

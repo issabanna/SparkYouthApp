@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
+import { Picker } from "./Picker";
 import * as ImagePicker from "expo-image-picker";
 export async function pickPreviewImage() {
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -163,11 +163,7 @@ const s = StyleSheet.create({
     color: "#171717",
   },
   pickerBox: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
     marginTop: 8,
-    overflow: "hidden",
   },
   picker: {
     fontFamily: "Tajawal",

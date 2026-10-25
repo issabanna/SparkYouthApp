@@ -1,0 +1,38 @@
+/* Shared web form controls for mobile and administration. */
+body select:not([multiple]):not([size]) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-sizing: border-box !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px !important;
+  height: 52px !important;
+  padding: 10px 16px 10px 44px !important;
+  border: 1px solid #ded9cf !important;
+  border-radius: 16px !important;
+  background-color: #fff !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%236e685d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 16px center !important;
+  color: #302e28 !important;
+  font-family: inherit !important;
+  font-size: 16px !important;
+  font-weight: 400;
+  line-height: 1.5 !important;
+  direction: rtl;
+  text-align: right;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(48, 42, 30, .025);
+  transition: border-color .15s, box-shadow .15s;
+}
+body select:not([multiple]):not([size]):hover:not(:disabled) { border-color: #b9ad98 !important; }
+body select:not([multiple]):not([size]):focus-visible {
+  outline: none;
+  border-color: #dc842b !important;
+  box-shadow: 0 0 0 3px rgba(239, 132, 39, .17);
+}
+body select:not([multiple]):not([size]):disabled { background-color: #f1eee8 !important; color: #928b7e !important; cursor: default; }
+body select option { background: #fff; color: #302e28; font: inherit; }
+body select[multiple], body select[size] { padding: 12px; border: 1px solid #ded9cf; border-radius: 14px; background: #fff; font: inherit; min-height: 96px; }
+
+body[data-spark-mobile] select { font-family: Tajawal, Tahoma, Arial, sans-serif !important; }

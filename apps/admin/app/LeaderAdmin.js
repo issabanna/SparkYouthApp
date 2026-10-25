@@ -33,8 +33,10 @@ export function LinkEditor({
 }
 export default function LeaderAdmin({
   activities,
-  cloud
+  cloud,
+  mode='applications'
 }) {
+  const assignmentsOnly=mode==='assignments';
   const [rows, setRows] = useState([]),
     [selected, setSelected] = useState(null),
     [assignments, setAssignments] = useState([]),
@@ -102,12 +104,12 @@ export default function LeaderAdmin({
       setBusy(false);
     }
   };
-  return <section className="panel"><h2>طلبات المرشدين وتكليف الأنشطة</h2>{cloud !== 'remote' ? <p>سجّل دخول الإدارة للاتصال بالطلبات المشتركة.</p> : <><label>بحث باسم المرشد<input value={query} onChange={e => setQuery(e.target.value)} /></label><button disabled={busy} onClick={load}>تحديث</button>{message && !selectedId && <p role="status">{message}</p>}<table className="registrationTable"><thead><tr><th>الاسم</th><th>الحالة</th></tr></thead><tbody>{rows.filter(r => r.details.arabicFullName.includes(query)).map(r => <tr key={r.id} data-testid={"leader-row-"+r.id} onClick={()=>{if(!busy)open(r.id)}}><td><button type="button" disabled={busy} onClick={event=>{event.stopPropagation();open(r.id)}}>{r.details.arabicFullName}</button></td><td>{labels[r.status]}</td></tr>)}</tbody></table>{!rows.length && <p>لا توجد طلبات إرشاد بعد.</p>}{selectedId&&<dialog ref={dialog} className="registrationDialog" aria-labelledby="leader-detail-title" onCancel={event=>{event.preventDefault();close()}}><div className="registrationDialogHeader"><h2 id="leader-detail-title">تفاصيل طلب المرشد</h2><button type="button" disabled={busy} onClick={close}>إغلاق تفاصيل المرشد</button></div>{opening&&<p role="status">جارٍ فتح تفاصيل المرشد…</p>}{message&&<p role="status">{message}</p>}{!opening&&!selected&&<button type="button" onClick={()=>open(selectedId)}>إعادة فتح الطلب</button>}{selected&&<section className="panel editor"><h3>{selected.details.arabicFullName}</h3><p>{labels[selected.status]}</p><dl>{[...accountFields, ...leaderFields, ['dob', 'تاريخ الميلاد'], ['gender', 'الجنس']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{key === 'gender' ? selected.details[key] === 'male' ? 'ذكر' : 'أنثى' : selected.details[key] || '—'}</dd></div>)}</dl>{selected.photo && <img src={selected.photo} alt="صورة مقدم طلب الإرشاد" style={{
+  return <section className="panel"><h2>{assignmentsOnly?"تكليفات المرشدين":"طلبات المرشدين"}</h2>{assignmentsOnly&&<p>اختر مرشدًا معتمدًا لتحديد الأنشطة والدور والفريق والخيمة.</p>}{cloud !== 'remote' ? <p>سجّل دخول الإدارة للاتصال بالطلبات المشتركة.</p> : <><label>بحث باسم المرشد<input value={query} onChange={e => setQuery(e.target.value)} /></label><button disabled={busy} onClick={load}>تحديث</button>{message && !selectedId && <p role="status">{message}</p>}<table className="registrationTable"><thead><tr><th>الاسم</th><th>الحالة</th></tr></thead><tbody>{rows.filter(r => (!assignmentsOnly||r.status==='LeaderApproved')&&r.details.arabicFullName.includes(query)).map(r => <tr key={r.id} data-testid={"leader-row-"+r.id} onClick={()=>{if(!busy)open(r.id)}}><td><button type="button" disabled={busy} onClick={event=>{event.stopPropagation();open(r.id)}}>{r.details.arabicFullName}</button></td><td>{labels[r.status]}</td></tr>)}</tbody></table>{!rows.some(r=>!assignmentsOnly||r.status==='LeaderApproved')&&<p>{assignmentsOnly?'لا يوجد مرشدون معتمدون للتكليف بعد.':'لا توجد طلبات إرشاد بعد.'}</p>}{selectedId&&<dialog ref={dialog} className="registrationDialog" aria-labelledby="leader-detail-title" onCancel={event=>{event.preventDefault();close()}}><div className="registrationDialogHeader"><h2 id="leader-detail-title">{assignmentsOnly?"تكليف أنشطة المرشد":"تفاصيل طلب المرشد"}</h2><button type="button" disabled={busy} onClick={close}>إغلاق تفاصيل المرشد</button></div>{opening&&<p role="status">جارٍ فتح تفاصيل المرشد…</p>}{message&&<p role="status">{message}</p>}{!opening&&!selected&&<button type="button" onClick={()=>open(selectedId)}>إعادة فتح الطلب</button>}{selected&&<section className="panel editor"><h3>{selected.details.arabicFullName}</h3><p>{labels[selected.status]}</p>{!assignmentsOnly&&<><dl>{[...accountFields, ...leaderFields, ['dob', 'تاريخ الميلاد'], ['gender', 'الجنس']].map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{key === 'gender' ? selected.details[key] === 'male' ? 'ذكر' : 'أنثى' : selected.details[key] || '—'}</dd></div>)}</dl>{selected.photo && <img src={selected.photo} alt="صورة مقدم طلب الإرشاد" style={{
           width: 160,
           height: 160,
           objectFit: 'cover',
           borderRadius: 16
-        }} />}<div className="actions"><button disabled={busy || selected.status === 'LeaderApproved'} onClick={() => save({
+        }} />}</>} {!assignmentsOnly&&<div className="actions"><button disabled={busy || selected.status === 'LeaderApproved'} onClick={() => save({
             action: 'status',
             status: 'LeaderApproved'
           })}>اعتماد المرشد</button><button disabled={busy || selected.status === 'LeaderRejected'} onClick={() => save({
@@ -116,7 +118,7 @@ export default function LeaderAdmin({
           })}>رفض طلب الإرشاد</button><button disabled={busy || selected.status === 'LeaderPending'} onClick={() => save({
             action: 'status',
             status: 'LeaderPending'
-          })}>إعادة إلى انتظار الموافقة</button></div>{selected.status === 'LeaderApproved' && <fieldset><legend>تكليف الأنشطة — يحددها المسؤول فقط</legend>{activities.map(a => {
+          })}>إعادة إلى انتظار الموافقة</button></div>}{assignmentsOnly&&selected.status === 'LeaderApproved' && <fieldset><legend>تكليف الأنشطة — يحددها المسؤول فقط</legend>{activities.map(a => {
             const assignment = assignments.find(x => x.activityId === a.id);
             return <div key={a.id}><label className="checkbox"><input type="checkbox" checked={!!assignment} onChange={e => setAssignments(e.target.checked ? [...assignments, {
                   activityId: a.id,
@@ -124,13 +126,13 @@ export default function LeaderAdmin({
                   role: 'Leader',
                   teamGroup: 'main',
                   tentNumber: null
-                }] : assignments.filter(x => x.activityId !== a.id))} />{a.title}</label>{assignment && <fieldset><label>الدور في النشاط<select value={assignment.roleId || 'leader'} onChange={e => setAssignments(assignments.map(x => x.activityId === a.id ? {
+                }] : assignments.filter(x => x.activityId !== a.id))} />{a.title}</label>{assignment && <fieldset><label>الدور في النشاط<select aria-label="الدور في النشاط" value={assignment.roleId || 'leader'} onChange={e => setAssignments(assignments.map(x => x.activityId === a.id ? {
                     ...x,
                     roleId: e.target.value
                   } : x))}>{Object.entries(campRoles).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label>مجموعة الفريق (نفس القيمة لرئيس الفريق وأعضائه)<input maxLength={100} value={assignment.teamGroup || 'main'} onChange={e => setAssignments(assignments.map(x => x.activityId === a.id ? {
                     ...x,
                     teamGroup: e.target.value
-                  } : x))} /></label>{assignment.roleId === 'leader' && <label>الخيمة المكلف بها المرشد<select value={assignment.tentNumber ?? ''} onChange={e => setAssignments(assignments.map(x => x.activityId === a.id ? {
+                  } : x))} /></label>{assignment.roleId === 'leader' && <label>الخيمة المكلف بها المرشد<select aria-label="الخيمة المكلف بها المرشد" value={assignment.tentNumber ?? ''} onChange={e => setAssignments(assignments.map(x => x.activityId === a.id ? {
                     ...x,
                     tentNumber: e.target.value === '' ? null : Number(e.target.value)
                   } : x))}><option value="">دون تكليف خيمة</option>{Array.from({

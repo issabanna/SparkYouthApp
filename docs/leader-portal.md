@@ -16,7 +16,7 @@ No additional SQL is required after migration 002. The existing private CAS-back
 
 All approved assigned leaders see the camp team, general links and activity-specific links. No leader can self-register for an activity. Person profiles are fetched only after the server rechecks the viewer's assignment and subject scope. Profiles include a personal account photo when available, never an ID-document photo. History is limited to activities also assigned to the viewer. Camp team projections omit phone numbers, national IDs and private application details.
 
-Admin manages general links, contact text and privacy text in general parameters; activity links, team banner and camp description are edited on the activity. Publish content changes as usual. Role assignments and approvals take effect directly, with the mobile account view refreshing every 30 seconds or on return to the foreground.
+Admin reviews applications in طلبات المرشدين and manages approved leaders’ camp roles, teams and tents in the separate تكليفات المرشدين menu page. Admin manages general links, contact text and privacy text in general parameters; activity links, team banner and camp description are edited on the activity. Publish content changes as usual. Role assignments and approvals take effect directly, with the mobile account view refreshing every 30 seconds or on return to the foreground.
 
 ## Evaluations and reports
 

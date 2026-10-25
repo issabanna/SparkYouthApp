@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, TextInput, Image } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { Picker } from './Picker';
 import { evaluationRequest, leaderPersonRequest } from './registration-client';
 const {
   evaluationQuestions,

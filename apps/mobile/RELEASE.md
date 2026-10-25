@@ -1,6 +1,6 @@
 # Native beta distribution
 
-Release configuration is prepared; no native build or upload has run.
+Standalone Android preview builds are available; see docs/android-preview.md. Store uploads have not been performed.
 
 ## Account and identity prerequisites
 
@@ -22,4 +22,4 @@ From /workspace/SparkYouthApp/apps/mobile with an authenticated EAS CLI:
 
 For Android APK sharing without Play Console: `eas build --platform android --profile preview`. iOS internal distribution requires registered device provisioning; TestFlight is preferred for this request.
 
-Current app is a UI prototype. Authentication, registration backend and production data are not implemented. Browser preview is at /app/ on the web deployment; it does not validate native behavior. Test actual builds before distributing them.
+The app uses real Supabase authentication and a private shared registration backend. Learning progress remains a local preview, and bus camera scanning currently uses the web version. Browser preview is at /app/ on the web deployment; it does not validate native behavior. Test actual builds before distributing them.

@@ -31,7 +31,8 @@ const sections = [
   ["announcements", "إعلانات الصفحة الرئيسية"],
   ["activities", "المخيمات والأنشطة"],
   ["registrations", "طلبات التسجيل"],
-  ["leaders", "طلبات المرشدين والتكليفات"],
+  ["leaders", "طلبات المرشدين"],
+  ["leaderAssignments", "تكليفات المرشدين"],
   ["bus", "مسؤولو الحافلات"],
   ["evaluations", "تقارير التقييمات"],
   ["galleries", "ألبومات الصور"],
@@ -527,7 +528,7 @@ export default function Dashboard() {
             {message}
           </p>
         )}
-        {section === "evaluations" ? (<EvaluationReports activities={content.activities} cloud={cloud}/>) : section === "bus" ? (<BusAdmin cloud={cloud} activities={content.activities}/>) : section === "leaders" ? (<LeaderAdmin activities={content.activities} cloud={cloud}/>) : section === "parameters" ? (
+        {section === "evaluations" ? (<EvaluationReports activities={content.activities} cloud={cloud}/>) : section === "bus" ? (<BusAdmin cloud={cloud} activities={content.activities}/>) : section === "leaderAssignments" ? (<LeaderAdmin key="assignments" mode="assignments" activities={content.activities} cloud={cloud}/>) : section === "leaders" ? (<LeaderAdmin key="applications" activities={content.activities} cloud={cloud}/>) : section === "parameters" ? (
             <section className="panel editor">
               <h2>إعدادات الحساب والمرشدين</h2>
               <LinkEditor title="روابط عامة للمرشدين المعتمدين" value={content.leaderSettings?.generalLinks||[]} onChange={generalLinks=>persist({...content,leaderSettings:{...content.leaderSettings,generalLinks}})}/>

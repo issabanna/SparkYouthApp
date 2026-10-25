@@ -52,6 +52,8 @@ const startup = `
   finish();
 })();
 </script>`;
+html = html.replace('<body>', '<body data-spark-mobile="true">');
+html = html.replace('</head>', '<link rel="stylesheet" href="/shared/forms.css"></head>');
 html = html.replace('<html lang="en">', '<html lang="ar">');
 html = html.replace(/(<div id="root"><\/div>)/, '$1' + startup);
 fs.writeFileSync(output, html);
