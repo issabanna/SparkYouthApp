@@ -66,12 +66,15 @@ const db=http.createServer(async(req,res)=>{try{
   const dashboard=await (await admin.get(base+'/api/admin/registrations')).json();assert.equal(dashboard.records[0].receiptReference,'PAY-001');const imageUrl=dashboard.records[0].receipt.uri;
   assert.equal((await api.get(base+imageUrl)).status(),401);assert.equal((await admin.get(base+imageUrl)).status(),200);
   const adminContext=await browser.newContext({storageState:await admin.storageState()}),adminPage=await adminContext.newPage();
-  await adminPage.goto(base);await adminPage.getByRole('button',{name:'طلبات التسجيل',exact:true}).click();await adminPage.getByText('PAY-001',{exact:false}).waitFor();
+  await adminPage.goto(base);await adminPage.getByRole('button',{name:'طلبات التسجيل',exact:true}).click();
+  assert.deepEqual(await adminPage.getByRole('columnheader').allTextContents(),['اسم المشارك','المخيم / النشاط','الحالة']);
+  assert.equal(await adminPage.getByText('PAY-001',{exact:false}).count(),0);
+  await adminPage.getByTestId('registration-row-'+id).getByRole('button').click();await adminPage.getByText('PAY-001',{exact:false}).waitFor();
   await adminPage.getByRole('button',{name:'طلب تصحيح الوصل',exact:true}).click();await adminPage.getByRole('status').filter({hasText:'تم تحديث الطلب.'}).waitFor();
 
   result=await (await api.get(base+'/api/registrations',{headers:owner})).json();assert.equal(shared.registrationStatusLabel(result.records[0]),'بانتظار الدفع');
   await send(owner,{action:'receipt',id,image:demoImage(),reference:'PAY-002'});
-  await adminPage.reload();await adminPage.getByRole('button',{name:'طلبات التسجيل',exact:true}).click();await adminPage.getByText('PAY-002',{exact:false}).waitFor();await adminPage.getByRole('button',{name:'قبول الوصل واعتماد الطلب',exact:true}).click();await adminPage.getByRole('status').filter({hasText:'تم قبول الوصل واعتماد الطلب.'}).waitFor();
+  await adminPage.reload();await adminPage.getByRole('button',{name:'طلبات التسجيل',exact:true}).click();await adminPage.getByTestId('registration-row-'+id).getByRole('button').click();await adminPage.getByText('PAY-002',{exact:false}).waitFor();await adminPage.getByRole('button',{name:'قبول الوصل واعتماد الطلب',exact:true}).click();await adminPage.getByRole('status').filter({hasText:'تم قبول الوصل واعتماد الطلب.'}).waitFor();
 
   result=await (await api.get(base+'/api/registrations',{headers:owner})).json();assert.equal(result.records[0].status,'Confirmed');assert.equal(result.records[0].instructionText,'APPROVED SECRET');
   await page.reload();await page.getByRole('tab',{name:'الأنشطة',exact:true}).click();await page.getByRole('button',{name:'تسجيلاتي',exact:true}).click();await page.getByText('APPROVED SECRET',{exact:true}).waitFor();assert.equal(await page.getByText('PAYMENT INSTRUCTIONS',{exact:true}).count(),0);assert.deepEqual(browserErrors,[]);
@@ -84,16 +87,30 @@ const db=http.createServer(async(req,res)=>{try{
   assert.equal(rows.get(waiverId).record.auditLog.length,1);assert.equal(rows.get(waiverId).record.auditLog[0].action,'submitted');
   for(const reason of [undefined,'  ','x'])assert.equal((await admin.post(base+'/api/admin/registrations',{data:{action:'approveWithoutReceipt',id:waiverId,reason}})).status(),409);
   assert.equal(rows.get(waiverId).record.status,'Pending');assert.equal(rows.get(waiverId).record.auditLog.length,1);
+  rows.get(waiverId).record.status='Waiting';rows.get(waiverId).record.details.tentNumber=null;
   assert.equal((await api.post(base+'/api/admin/registrations',{data:{action:'approveWithoutReceipt',id:waiverId,reason:'forged approval'}})).status(),401);
   await adminPage.reload();await adminPage.getByRole('button',{name:'طلبات التسجيل',exact:true}).click();
+  await adminPage.getByTestId('registration-row-'+waiverId).getByRole('button').click();
+  await adminPage.getByRole('dialog').getByLabel('تعيين خيمة',{exact:false}).selectOption('2');await adminPage.getByRole('button',{name:'تخصيص المقعد وطلب الدفع',exact:true}).click();await adminPage.getByRole('status').filter({hasText:'تم تحديث الطلب.'}).waitFor();
+  await adminPage.getByRole('button',{name:'تعديل بيانات الطلب والخيمة',exact:true}).click();await adminPage.getByRole('dialog').getByLabel('الخيمة',{exact:false}).selectOption('3');await adminPage.getByRole('button',{name:'حفظ تعديلات الطلب',exact:true}).click();await adminPage.getByText('تم حفظ تعديلات الطلب وتسجيلها في سجل الإجراءات.',{exact:true}).waitFor();
   await adminPage.locator('article').filter({hasText:waiverRecord.reference}).getByRole('button',{name:'تأكيد الطلب بدون وصل',exact:true}).click();
   assert.equal(await adminPage.getByRole('button',{name:'حفظ السبب وتأكيد الطلب',exact:true}).isDisabled(),true);
   const reason='تم استلام المبلغ نقدًا لدى الإدارة';await adminPage.getByLabel('سبب التأكيد بدون وصل',{exact:false}).fill(reason);await adminPage.getByRole('button',{name:'حفظ السبب وتأكيد الطلب',exact:true}).click();
   await adminPage.getByText('تم تأكيد الطلب بدون وصل وحفظ السبب في سجل الإجراءات.',{exact:true}).waitFor();
-  const waived=rows.get(waiverId).record;assert.equal(waived.status,'Confirmed');assert.equal(waived.receiptStatus,'notSubmitted');assert.equal(waived.paymentWaiver.reason,reason);assert.equal(waived.auditLog.length,2);assert.equal(waived.auditLog[1].action,'approved_without_receipt');assert.equal(waived.auditLog[1].reason,reason);assert.match(waived.auditLog[1].actor.session,/^[a-f0-9]{12}$/);
+  const waived=rows.get(waiverId).record;assert.equal(waived.status,'Confirmed');assert.equal(waived.receiptStatus,'notSubmitted');assert.equal(waived.paymentWaiver.reason,reason);assert.equal(waived.details.tentNumber,3);assert.equal(waived.auditLog.length,4);assert.equal(waived.auditLog[3].action,'approved_without_receipt');assert.equal(waived.auditLog[3].reason,reason);assert.match(waived.auditLog[3].actor.session,/^[a-f0-9]{12}$/);
   const ownWaived=(await (await api.get(base+'/api/registrations',{headers:owner})).json()).records.find(r=>r.id===waiverId);assert.equal(ownWaived.auditLog,undefined);assert.equal(ownWaived.paymentWaiver,undefined);assert.equal(ownWaived.status,'Confirmed');
-  const auditCard=adminPage.locator('article').filter({hasText:waiverRecord.reference});await auditCard.getByText('سجل إجراءات الطلب (2)',{exact:true}).click();await auditCard.getByText('السبب: '+reason,{exact:true}).waitFor();
+  const auditCard=adminPage.locator('article').filter({hasText:waiverRecord.reference});await auditCard.getByText('سجل إجراءات الطلب (4)',{exact:true}).click();await auditCard.getByText('السبب: '+reason,{exact:true}).waitFor();
   console.log('PASS: mandatory waiver justification in UI and API, unauthorized/forged overrides denied, receipt remains unaccepted, atomic private audit and visible admin history');
+  await adminPage.getByRole('button',{name:'تعديل بيانات الطلب والخيمة',exact:true}).click();
+  await adminPage.getByRole('dialog').getByLabel('الاسم العربي',{exact:false}).fill('اسم معدل للمشارك');
+  const tentSelect=adminPage.getByRole('dialog').getByLabel('الخيمة',{exact:false});await tentSelect.selectOption('4');
+  await adminPage.getByRole('button',{name:'حفظ تعديلات الطلب',exact:true}).click();await adminPage.getByText('تم حفظ تعديلات الطلب وتسجيلها في سجل الإجراءات.',{exact:true}).waitFor();
+  assert.equal(rows.get(waiverId).record.details.tentNumber,4);assert.equal(rows.get(waiverId).record.status,'Confirmed');assert.equal(rows.get(waiverId).record.details.arabicFullName,'اسم معدل للمشارك');assert.equal(rows.get(waiverId).record.auditLog.at(-1).action,'edited');assert.equal(rows.get(waiverId).record.auditLog.at(-1).changes.tentNumber.before,3);
+  assert.equal((await admin.post(base+'/api/admin/registrations',{data:{action:'edit',id:waiverId,patch:{tentNumber:'0'},expected:{tentNumber:4}}})).status(),409);
+  assert.equal((await admin.post(base+'/api/admin/registrations',{data:{action:'edit',id:waiverId,patch:{tentNumber:'5'},expected:{tentNumber:2}}})).status(),409);
+  const compact=await(await admin.get(base+'/api/admin/registrations?compact=true')).json();assert.ok(compact.records.every(r=>!r.auditLog&&!r.receipt&&!r.details.medicalNotes));
+  await adminPage.getByRole('button',{name:'إغلاق التفاصيل',exact:true}).click();assert.equal(await adminPage.getByRole('dialog').count(),0);
+  console.log('PASS: compact three-column table, lazy detail modal, editable approved camper data/tent, capacity/conflict protection and private audited field changes');
   await adminPage.getByRole('button',{name:'المخيمات والأنشطة',exact:true}).click();await adminPage.getByRole('button',{name:'تعديل',exact:true}).click();
   assert.equal(await adminPage.getByText('استخدام رابط صورة بدل الرفع',{exact:true}).count(),0);assert.equal(await adminPage.getByLabel('رابط الصورة',{exact:true}).count(),0);
   await adminPage.getByRole('button',{name:'استخدام الصورة الافتراضية',exact:true}).click();
@@ -115,6 +132,11 @@ const db=http.createServer(async(req,res)=>{try{
   assert.deepEqual(racing.map(r=>r.status()).sort(),[200,409]);assert.equal([...rows.values()].filter(r=>r.record.details.tentNumber===1).length,1);
   assert.equal((await api.post(base+'/api/admin/registrations',{data:{action:'receipt',id,decision:'accepted'}})).status(),401);
   const winner=racing.findIndex(r=>r.status()===200),winningData=await racing[winner].json();assert.equal((await send([c,d][winner],{action:'cancel',id:winningData.recordId})).status(),200);assert.equal(rows.get(winningData.recordId).record.auditLog.at(-1).action,'cancelled');
+  for(let i=0;i<60;i++){const example=structuredClone(rows.get(id));example.record.id='bulk-'+i;example.record.reference='BULK-'+i;example.record.details.arabicFullName='مشارك إضافي '+i;rows.set(example.record.id,example);}
+  await adminPage.reload();await adminPage.getByRole('button',{name:'طلبات التسجيل',exact:true}).click();await adminPage.getByTestId('registration-row-bulk-0').waitFor();
+  assert.equal(await adminPage.locator('tbody tr').count(),25);await adminPage.getByRole('button',{name:'التالي',exact:true}).click();await adminPage.getByTestId('registration-row-bulk-22').waitFor();assert.ok(await adminPage.locator('tbody tr').count()<=25);
+  await adminPage.getByLabel('بحث',{exact:false}).fill('مشارك إضافي 59');await adminPage.getByTestId('registration-row-bulk-59').waitFor();assert.equal(await adminPage.locator('tbody tr').count(),1);
+  console.log('PASS: large registration index stays paginated at 25 rows and supports name search');
   console.log('PASS: real Next APIs + mocked Supabase RPC contract: ownership isolation, private receipt dashboard, rejection/re-upload, approval-only instructions, concurrent tent allocation, admin authorization; conflicts retried:',conflicts);
   await admin.dispose();
  }catch(e){console.error(log);if(debugPage)console.error((await debugPage.locator('body').innerText()).slice(-6000));console.error([...rows.values()].map(r=>({id:r.record.id,status:r.record.status,receiptStatus:r.record.receiptStatus})));throw e;}finally{if(browser)await browser.close();await api.dispose();server.kill('SIGTERM');db.close();}

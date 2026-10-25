@@ -19,3 +19,9 @@ If Supabase is configured but the registration migration is absent, the app show
 Each registration's **سجل إجراءات الطلب** shows successful submissions, receipt uploads/re-uploads, receipt rejection or acceptance with approval, seat allocation/payment requests, approval, rejection, cancellation, and approvals without a receipt. Events are appended on the server in the same atomic update as the registration. Each stores time, actor, before/after statuses and tent, and the override reason when applicable. History begins when this feature is deployed; older actions are not fabricated retroactively. Audit logs and waiver notes are returned only to authenticated admins, not to the owner or public content API.
 
 The current shared admin password identifies an authenticated admin **session**, not an individual staff member. Times display in Asia/Amman. No additional SQL migration is required: the audit trail is stored inside the existing private registration JSON.
+
+## Compact admin review
+
+The registration page shows only camper name, camp/activity, and workflow status, with name/reference search, camp/status filters and 25 rows per page. Opening a row loads its private detail record and images into a modal. Use **تعديل بيانات الطلب والخيمة** to amend personal/contact/guardian/school/medical fields and move active registrations to an eligible tent, including already approved registrations. Save or cancel edits before making an approval/payment decision.
+
+Admin edits use a strict field whitelist, expected prior values, per-activity atomic commits, DOB/grade validation, duplicate detection and gender/capacity checks. They preserve ownership, payment/receipt decisions and existing documents. Audit events store the changed fields' before/after values. Waiting-list place allocation continues through the explicit seat-allocation action. No new SQL migration is required.

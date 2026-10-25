@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const shared=require('../packages/shared');
+const activity=shared.normalizeActivity({id:'edit-camp',kind:'camp',title:'Camp',published:true,capacity:30,tentsEnabled:true,requireReceipt:false,registrationTestMode:true,dobMin:'2008-01-01',dobMax:'2012-12-31',tents:shared.defaultTents().map(t=>({...t,capacity:1}))});
+const first=shared.submitRegistration(activity,{id:'a',name:'Parent'},{gender:'male',tentNumber:'0'},[],true).record;
+const second=shared.submitRegistration(activity,{id:'b',name:'Parent B'},{gender:'male',tentNumber:'1'},[first],true).record;
+let records=[first,second];
+const result=shared.editRegistration(records,first.id,activity,{arabicFullName:'اسم مشارك جديد',tentNumber:'2'},{arabicFullName:first.details.arabicFullName,tentNumber:0});
+assert.equal(result.records[0].details.firstName,'اسم');assert.equal(result.records[0].details.tentNumber,2);assert.equal(first.details.tentNumber,0);assert.equal(result.changes.tentNumber.before,0);
+assert.ok(shared.editRegistration(records,first.id,activity,{tentNumber:'1'},{tentNumber:0}).error);
+assert.ok(shared.editRegistration(records,first.id,activity,{tentNumber:'7'},{tentNumber:0}).error);
+assert.ok(shared.editRegistration(records,first.id,activity,{status:'Confirmed'},{status:'Pending'}).error);
+assert.ok(shared.editRegistration(records,first.id,activity,{phone:'0790000000'},{phone:'changed elsewhere'}).error);
+assert.ok(shared.editRegistration(records,first.id,activity,{dob:'2013-01-01'},{dob:''}).error);
+assert.ok(shared.editRegistration(records,first.id,{...activity,kind:'event',tentsEnabled:false},{tentNumber:'2'},{tentNumber:0}).error);
+const female=shared.editRegistration(records,first.id,activity,{gender:'female',tentNumber:'7'},{gender:'male',tentNumber:0});assert.equal(female.records[0].details.tentNumber,7);
+const approved=shared.changeRegistrationStatus([first],first.id,'Confirmed',[activity]).records[0];assert.equal(shared.editRegistration([approved],first.id,activity,{tentNumber:'3'},{tentNumber:0}).records[0].status,'Confirmed');
+const audit=shared.appendRegistrationAction(result.records[0],{action:'edited',actor:{type:'admin'},before:first,changes:result.changes});assert.equal(audit.auditLog[0].changes.tentNumber.after,2);
+console.log('PASS: audited edits, name derivation, approved tent moves, full/wrong-gender/non-camp tents rejected, DOB range, concurrent edits and mass-assignment protection');

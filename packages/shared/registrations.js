@@ -596,7 +596,7 @@ module.exports.approveWithoutReceipt = (records,id,activities,reason,actor,assig
   const waived={...current,paymentWaiver:{reason:justification,actor,at:new Date().toISOString()}};
   return changeRegistrationStatus(records.map(r=>r.id===id?waived:r),id,'Confirmed',activities,assignedTent);
 };
-module.exports.appendRegistrationAction = (record,{action,actor,before,reason=''}) => ({
+module.exports.appendRegistrationAction = (record,{action,actor,before,reason='',changes}) => ({
  ...record,
  auditLog:[...(before?.auditLog||[]),{
   id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -606,5 +606,52 @@ module.exports.appendRegistrationAction = (record,{action,actor,before,reason=''
   fromReceiptStatus:before?.receiptStatus||null,toReceiptStatus:record.receiptStatus,
   fromTent:before?.details?.tentNumber??null,toTent:record.details?.tentNumber??null,
   ...(reason?{reason}:{}),
+  ...(changes?{changes}:{}),
  }],
 });
+
+module.exports.registrationEditableFields = {
+ arabicFullName:'الاسم العربي',englishFullName:'الاسم الإنجليزي',firstName:'الاسم الأول',lastName:'اسم العائلة',
+ dob:'تاريخ الميلاد',nationalId:'الرقم الوطني',email:'البريد الإلكتروني',phone:'رقم الهاتف',gender:'الجنس',grade:'الصف',
+ guardianName:'اسم ولي الأمر',guardianPhone:'هاتف ولي الأمر',guardianPhoneOwner:'صاحب هاتف ولي الأمر',
+ city:'المدينة',school:'المدرسة',shirtSize:'مقاس التيشيرت',address:'العنوان',medicalNotes:'التوصيات الطبية',allergies:'الحساسية',tentNumber:'الخيمة',
+};
+module.exports.editRegistration = (records,id,activity,patch,expected={}) => {
+ const current=records.find(r=>r.id===id),a=normalizeActivity(activity);
+ if(!current||!patch||typeof patch!=='object'||Array.isArray(patch))return {error:'الطلب غير موجود أو التعديلات غير صالحة.'};
+ const details={...current.details};
+ for(const [key,value]of Object.entries(patch)){
+  if(!Object.hasOwn(module.exports.registrationEditableFields,key))return {error:'لا يمكن تعديل هذا الحقل.'};
+  const before=current.details[key]??(key==='tentNumber'?null:'');
+  if(!Object.hasOwn(expected,key)||JSON.stringify(before)!==JSON.stringify(expected[key]))return {error:'تغيرت بيانات الطلب أثناء التحرير. أعد فتح الطلب ثم حاول مجددًا.'};
+  if(key==='tentNumber'){
+   const tent=value===''||value===null?null:Number(value);
+   if(tent!==null&&!a.tentsEnabled)return {error:'لا يوجد تخصيص خيام لهذا النشاط.'};
+   if(tent!==null&&(!Number.isInteger(tent)||tent<0||tent>13))return {error:'اختر رقم خيمة صحيحًا.'};
+   if(!['Pending','Confirmed'].includes(current.status)&&tent!==null)return {error:'خصّص مقعدًا لطلب الانتظار من إجراءات الموافقة أولًا.'};
+   details.tentNumber=tent;
+  }else{
+   if(typeof value!=='string'||value.length>(['medicalNotes','allergies'].includes(key)?2000:200))return {error:'تحقق من طول الحقول المعدّلة.'};
+   details[key]=value.trim();
+  }
+ }
+ for(const key of a.kind==='camp'?['arabicFullName']:['firstName','lastName'])if(Object.hasOwn(patch,key)&&!details[key])return {error:'أدخل اسم المشارك.'};
+ if(Object.hasOwn(patch,'nationalId')&&details.nationalId&&!/^[A-Za-z0-9-]{4,30}$/.test(details.nationalId))return {error:'أدخل رقمًا وطنيًا صحيحًا.'};
+ if(Object.hasOwn(patch,'gender')&&!['male','female'].includes(details.gender))return {error:'اختر ذكر أو أنثى.'};
+ for(const key of ['phone','guardianPhone'])if(Object.hasOwn(patch,key)&&details[key]&&!/^\d{10}$/.test(details[key]))return {error:'أدخل رقم هاتف من 10 أرقام.'};
+ if(Object.hasOwn(patch,'email')&&details.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email))return {error:'أدخل بريدًا إلكترونيًا صحيحًا.'};
+ if(Object.hasOwn(patch,'grade')&&a.kind==='camp'&&!a.gradeOptions.includes(details.grade))return {error:'اختر صفًا من صفوف المخيم.'};
+ if(Object.hasOwn(patch,'dob')){
+  if(!validDate(details.dob)||details.dob>new Date().toISOString().slice(0,10)||(a.dobMin&&details.dob<a.dobMin)||(a.dobMax&&details.dob>a.dobMax))return {error:'تاريخ الميلاد خارج النطاق المسموح.'};
+  details.age=String(ageAt(details.dob,a.startDate||a.date||new Date().toISOString().slice(0,10)));
+ }
+ if(a.kind==='camp'&&Object.hasOwn(patch,'arabicFullName')){const parts=details.arabicFullName.split(/\s+/);details.firstName=parts[0]||'';details.lastName=parts.slice(1).join(' ');}
+ if(['Pending','Confirmed'].includes(current.status)&&a.tentsEnabled){
+  const error=tentError({...a,registrationMode:'standard'},details);if(error)return {error};
+  if(tentAvailable(a,details.tentNumber,records,id)<=0)return {error:'الخيمة ممتلئة. اختر خيمة أخرى.'};
+ }
+ if(['Pending','Confirmed','Waiting'].includes(current.status)&&duplicateParticipant(records.filter(r=>r.id!==id),a.id,{id:current.ownerKey},details))return {error:'يوجد طلب قائم لهذا المشارك في المخيم.'};
+ const changes=Object.fromEntries(Object.keys(details).filter(key=>Object.hasOwn(module.exports.registrationEditableFields,key)||key==='age').filter(key=>JSON.stringify(details[key])!==JSON.stringify(current.details[key])).map(key=>[key,{before:current.details[key]??null,after:details[key]??null}]));
+ if(!Object.keys(changes).length)return {error:'لا توجد تعديلات للحفظ.'};
+ return {records:records.map(r=>r.id===id?{...r,details,updatedAt:new Date().toISOString()}:r),changes};
+};

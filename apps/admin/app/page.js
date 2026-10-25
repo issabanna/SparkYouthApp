@@ -4,6 +4,8 @@ import {prepareImage, imageData} from "../lib/prepare-image";
 import {
   reviewReceipt,
   approveWithoutReceipt,
+  editRegistration,
+  registrationEditableFields,
   appendRegistrationAction,
   registrationStatusLabel,
   validateCampSettings,
@@ -109,17 +111,62 @@ export default function Dashboard() {
   const registrationRemote = useRef(false);
   const [registrationStorageError, setRegistrationStorageError] = useState('');
   const [registrations, setRegistrations] = useState([]);
+  const [registrationRows,setRegistrationRows]=useState([]),[registrationTotal,setRegistrationTotal]=useState(0);
+  const [registrationPage,setRegistrationPage]=useState(1),[registrationQuery,setRegistrationQuery]=useState('');
+  const [registrationCamp,setRegistrationCamp]=useState(''),[registrationStatus,setRegistrationStatus]=useState('');
+  const [selectedRegistrationId,setSelectedRegistrationId]=useState(null),[selectedRegistration,setSelectedRegistration]=useState(null);
+  const [registrationEdit,setRegistrationEdit]=useState(null),[registrationEditBusy,setRegistrationEditBusy]=useState(false);
+  const registrationDialog=useRef(null),refreshRegistrationList=useRef(null),detailRequest=useRef(0);
+  useEffect(()=>{if(selectedRegistrationId&&registrationDialog.current&&!registrationDialog.current.open)registrationDialog.current.showModal();},[selectedRegistrationId]);
+  useEffect(()=>{if(cloud!=='remote'&&selectedRegistrationId)setSelectedRegistration(registrations.find(r=>r.id===selectedRegistrationId)||null);},[registrations,selectedRegistrationId,cloud]);
+  const closeRegistration=()=>{
+    if(registrationEditBusy||overrideBusy)return;
+    if(registrationEdit&&JSON.stringify(registrationEdit.values)!==JSON.stringify(registrationEdit.base)&&!window.confirm('إغلاق الطلب دون حفظ التعديلات؟'))return;
+    detailRequest.current++;setSelectedRegistrationId(null);setSelectedRegistration(null);setRegistrationEdit(null);setOverrideId(null);setMessage('');
+  };
+  const openRegistration=async(id)=>{
+    const request=++detailRequest.current;setSelectedRegistrationId(id);setSelectedRegistration(null);setRegistrationEdit(null);setOverrideId(null);setMessage('');
+    if(cloud!=='remote'){setSelectedRegistration(registrations.find(r=>r.id===id));return;}
+    try{const response=await fetch('/api/admin/registrations?id='+encodeURIComponent(id),{cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error);if(request===detailRequest.current)setSelectedRegistration(result.record);}
+    catch(error){if(request===detailRequest.current)setMessage(error.message||'تعذّر فتح الطلب.');}
+  };
   useEffect(()=>{
     if(cloud!=='remote')return;
-    registrationRemote.current=true;
-    let active=true;
-    const refresh=async()=>{try{const response=await fetch('/api/admin/registrations',{cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error);if(active){setRegistrations(result.records);setRegistrationStorageError('');}}catch(error){if(active)setRegistrationStorageError(error.message||'تعذّر تحميل التسجيلات.');}};
-    refresh();const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);
-    return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',refresh)};
-  },[cloud]);
+    registrationRemote.current=true;let active=true;
+    const refresh=async()=>{try{
+      const params=new URLSearchParams({compact:'true',page:String(registrationPage),query:registrationQuery,activity:registrationCamp,status:registrationStatus});
+      const response=await fetch('/api/admin/registrations?'+params,{cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error);
+      if(active){setRegistrationRows(result.records);setRegistrationTotal(result.total);setRegistrations(result.occupancy);setRegistrationStorageError('');if(result.page!==registrationPage)setRegistrationPage(result.page);}
+    }catch(error){if(active)setRegistrationStorageError(error.message||'تعذّر تحميل التسجيلات.');}};
+    refreshRegistrationList.current=refresh;const debounce=setTimeout(refresh,200),timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);
+    return()=>{active=false;clearTimeout(debounce);clearInterval(timer);window.removeEventListener('focus',refresh)};
+  },[cloud,registrationPage,registrationQuery,registrationCamp,registrationStatus]);
   const remoteRegistrationAction=async(body)=>{
-    try{const response=await fetch('/api/admin/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json();if(!response.ok)throw Error(result.error);setRegistrations(result.records);setMessage(body.action==='receipt'&&body.decision==='accepted'?'تم قبول الوصل واعتماد الطلب.':'تم تحديث الطلب.');}
+    if(registrationEdit){setMessage('احفظ التعديلات أو ألغها قبل تغيير حالة الطلب.');return;}
+    try{const response=await fetch('/api/admin/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,compact:true})});const result=await response.json();if(!response.ok)throw Error(result.error);setSelectedRegistration(result.record);await refreshRegistrationList.current?.();setMessage(body.action==='receipt'&&body.decision==='accepted'?'تم قبول الوصل واعتماد الطلب.':'تم تحديث الطلب.');}
     catch(error){setMessage(error.message||'تعذّر تحديث الطلب.');}
+  };
+  const startRegistrationEdit=(record)=>{
+    const values=Object.fromEntries(Object.keys(registrationEditableFields).map(key=>[key,String(record.details[key]??'')]));
+    setRegistrationEdit({id:record.id,values,base:{...values},expected:{...record.details}});setMessage('');
+  };
+  const saveRegistrationEdits=async()=>{
+    if(!registrationEdit||registrationEditBusy)return;
+    const patch=Object.fromEntries(Object.entries(registrationEdit.values).filter(([key,value])=>value!==registrationEdit.base[key]));
+    const expected=Object.fromEntries(Object.keys(patch).map(key=>[key,registrationEdit.expected[key]??(key==='tentNumber'?null:'')]));
+    setRegistrationEditBusy(true);
+    try{
+      if(cloud==='remote'){
+        const response=await fetch('/api/admin/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',id:registrationEdit.id,patch,expected,compact:true})});const result=await response.json();if(!response.ok)throw Error(result.error);setSelectedRegistration(result.record);await refreshRegistrationList.current?.();
+      }else{
+        const latest=JSON.parse(localStorage.getItem(registrationKey))||[];
+        const record=latest.find(r=>r.id===registrationEdit.id),activity=content.activities.find(a=>a.id===record?.activityId)||{};
+        const result=editRegistration(latest,registrationEdit.id,activity,patch,expected);if(result.error)throw Error(result.error);
+        const next=result.records.map(r=>r.id===registrationEdit.id?appendRegistrationAction(r,{action:'edited',actor:{type:'admin',session:'local-preview'},before:record,changes:result.changes}):r);
+        localStorage.setItem(registrationKey,JSON.stringify(next));setRegistrations(next);setSelectedRegistration(next.find(r=>r.id===registrationEdit.id));
+      }
+      setRegistrationEdit(null);setMessage('تم حفظ تعديلات الطلب وتسجيلها في سجل الإجراءات.');
+    }catch(error){setMessage(error.message||'تعذّر حفظ التعديلات.');}finally{setRegistrationEditBusy(false)}
   };
   const [tentAssignments, setTentAssignments] = useState({});
   const [overrideId,setOverrideId]=useState(null),[overrideReason,setOverrideReason]=useState('');
@@ -129,11 +176,11 @@ export default function Dashboard() {
     setOverrideBusy(true);
     try{
       if(cloud==='remote'){
-        const response=await fetch('/api/admin/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approveWithoutReceipt',id:overrideId,reason:overrideReason,tent:tentAssignments[overrideId]})});
-        const result=await response.json();if(!response.ok)throw Error(result.error);setRegistrations(result.records);
+        const response=await fetch('/api/admin/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approveWithoutReceipt',id:overrideId,reason:overrideReason,tent:selectedRegistration?.status==='Waiting'?tentAssignments[overrideId]:undefined,compact:true})});
+        const result=await response.json();if(!response.ok)throw Error(result.error);setSelectedRegistration(result.record);await refreshRegistrationList.current?.();
       }else{
         const latest=JSON.parse(localStorage.getItem(registrationKey))||[];
-        const result=approveWithoutReceipt(latest,overrideId,content.activities,overrideReason,{type:'admin',session:'local-preview'},tentAssignments[overrideId]);
+        const result=approveWithoutReceipt(latest,overrideId,content.activities,overrideReason,{type:'admin',session:'local-preview'},selectedRegistration?.status==='Waiting'?tentAssignments[overrideId]:undefined);
         if(result.error)throw Error(result.error);
         const before=latest.find(r=>r.id===overrideId);
         const next=result.records.map(r=>r.id===overrideId?appendRegistrationAction(r,{action:'approved_without_receipt',actor:{type:'admin',session:'local-preview'},before,reason:overrideReason.trim()}):r);
@@ -284,9 +331,10 @@ export default function Dashboard() {
   };
   const change = (key, value) => setDraft({ ...draft, [key]: value });
   const review = (id, status) => {
-    const record=registrations.find(r=>r.id===id);
+    const record=selectedRegistration?.id===id?selectedRegistration:registrations.find(r=>r.id===id);
+    if(registrationEdit){setMessage('احفظ التعديلات أو ألغها قبل تغيير حالة الطلب.');return;}
     if(status==='Confirmed'&&record?.receiptStatus!=='accepted'){setOverrideId(id);setOverrideReason('');return;}
-    if(cloud==='remote'){remoteRegistrationAction({action:'status',id,status,tent:tentAssignments[id]});return;}
+    if(cloud==='remote'){remoteRegistrationAction({action:'status',id,status,tent:record?.status==='Waiting'?tentAssignments[id]:undefined});return;}
     try {
       const latest = JSON.parse(localStorage.getItem(registrationKey)) || [];
       const latestContent = normalizeContent(
@@ -297,7 +345,7 @@ export default function Dashboard() {
         id,
         status,
         latestContent.activities,
-        tentAssignments[id],
+        record?.status==='Waiting'?tentAssignments[id]:undefined,
       );
       if (result.error) {
         setMessage(result.error);
@@ -312,6 +360,7 @@ export default function Dashboard() {
     }
   };
   const verifyReceipt = (id, decision) => {
+    if(registrationEdit){setMessage('احفظ التعديلات أو ألغها قبل مراجعة الوصل.');return;}
     if(cloud==='remote'){remoteRegistrationAction({action:'receipt',id,decision});return;}
     try {
       const latest = JSON.parse(localStorage.getItem(registrationKey)) || [];
@@ -393,6 +442,11 @@ export default function Dashboard() {
     reader.onerror = () => setMessage("تعذّر قراءة ملف الشعار.");
     reader.readAsDataURL(file);
   };
+  const localRegistrationRows=registrations.filter(r=>(!registrationCamp||r.activityId===registrationCamp)&&(!registrationStatus||r.status===registrationStatus)&&(!registrationQuery||[r.details.arabicFullName,r.details.englishFullName,r.details.firstName,r.details.lastName,r.reference].filter(Boolean).join(' ').toLocaleLowerCase().includes(registrationQuery.toLocaleLowerCase())));
+  const visibleRegistrationTotal=cloud==='remote'?registrationTotal:localRegistrationRows.length;
+  const registrationPages=Math.max(1,Math.ceil(visibleRegistrationTotal/25));
+  const currentRegistrationPage=Math.min(registrationPage,registrationPages);
+  const visibleRegistrationRows=cloud==='remote'?registrationRows:localRegistrationRows.slice((currentRegistrationPage-1)*25,currentRegistrationPage*25);
   if(cloud==='checking'||cloud==='locked'||cloud==='setup'||cloud==='error')return <main dir="rtl" style={{maxWidth:440,margin:'80px auto',padding:24}}>
     <h1>إدارة سبارك</h1>
     {cloud==='checking'?<p>جارٍ فتح الإدارة…</p>:cloud==='locked'?<form onSubmit={signIn}>
@@ -462,7 +516,7 @@ export default function Dashboard() {
           <p>أعلن عن المغامرة القادمة، شارك لحظاتها، وافتح بابًا للتعلّم.</p>
         </section>
         {registrationStorageError && <p role="alert" className="status">{registrationStorageError} شغّل 002_registrations_and_receipts.sql في Supabase لإكمال الإعداد.</p>}
-        {message && (
+        {message && !selectedRegistrationId && (
           <p role="status" className="status">
             {message}
           </p>
@@ -565,6 +619,25 @@ export default function Dashboard() {
         ) : section === "registrations" ? (
           <section className="panel">
             <h2>مراجعة طلبات المشاركة</h2>
+            <div className="registrationTools">
+              <label>بحث<input placeholder="اسم المشارك أو رقم الطلب" value={registrationQuery} onChange={e=>{setRegistrationQuery(e.target.value);setRegistrationPage(1)}} /></label>
+              <label>المخيم أو النشاط<select value={registrationCamp} onChange={e=>{setRegistrationCamp(e.target.value);setRegistrationPage(1)}}><option value="">جميع المخيمات والأنشطة</option>{content.activities.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label>
+              <label>حالة الطلب<select value={registrationStatus} onChange={e=>{setRegistrationStatus(e.target.value);setRegistrationPage(1)}}><option value="">جميع الحالات</option>{[['Pending','قيد المعالجة'],['Waiting','قائمة الانتظار'],['Confirmed','تمت الموافقة'],['Rejected','مرفوض'],['Cancelled','ملغى']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+            </div>
+            <div className="registrationTableWrap"><table className="registrationTable">
+              <thead><tr><th>اسم المشارك</th><th>المخيم / النشاط</th><th>الحالة</th></tr></thead>
+              <tbody>{visibleRegistrationRows.map(r=><tr key={r.id} data-testid={'registration-row-'+r.id} onClick={()=>openRegistration(r.id)}>
+                <td><button type="button" onClick={e=>{e.stopPropagation();openRegistration(r.id)}}>{r.details.arabicFullName||[r.details.firstName,r.details.lastName].filter(Boolean).join(' ')||r.details.englishFullName||'مشارك'}</button></td>
+                <td>{content.activities.find(a=>a.id===r.activityId)?.title||r.activityTitle}</td>
+                <td><span className="registrationStatus" data-status={r.status}>{registrationStatusLabel(r)}</span></td>
+              </tr>)}</tbody>
+            </table></div>
+            {!visibleRegistrationRows.length&&<p className="empty">لا توجد طلبات مطابقة.</p>}
+            <div className="registrationPagination"><span>{visibleRegistrationTotal} طلب · الصفحة {currentRegistrationPage} من {registrationPages}</span><button type="button" disabled={currentRegistrationPage<=1} onClick={()=>setRegistrationPage(currentRegistrationPage-1)}>السابق</button><button type="button" disabled={currentRegistrationPage>=registrationPages} onClick={()=>setRegistrationPage(currentRegistrationPage+1)}>التالي</button></div>
+            {selectedRegistrationId && <dialog ref={registrationDialog} className="registrationDialog" aria-label="تفاصيل طلب التسجيل" onCancel={e=>{e.preventDefault();closeRegistration()}}>
+              <div className="registrationDialogHeader"><h2>تفاصيل طلب التسجيل</h2><button type="button" disabled={overrideBusy||registrationEditBusy} onClick={closeRegistration}>إغلاق التفاصيل</button></div>
+              {message&&<p role="status" className="status">{message}</p>}
+              {!selectedRegistration&&<p>جارٍ فتح الطلب…</p>}
             {overrideId && <section className="panel editor">
               <h3>تأكيد الطلب بدون وصل</h3>
               <p>اكتب سبب الموافقة بدون وصل مقبول. سيُحفظ السبب مع وقت الإجراء وجلسة الإدارة.</p>
@@ -572,14 +645,20 @@ export default function Dashboard() {
               <button type="button" disabled={overrideBusy||overrideReason.trim().length<3} onClick={confirmWithoutReceipt}>حفظ السبب وتأكيد الطلب</button>
               <button type="button" disabled={overrideBusy} onClick={()=>{setOverrideId(null);setOverrideReason('')}}>إلغاء التأكيد</button>
             </section>}
-
-            <p>
-              طلبات محلية في هذا المتصفح فقط. الموافقة تُحسب من السعة؛ الطلبات
-              المعلقة لا تحجز مقاعد المخيم العامة، لكنها تحجز أماكن الخيام عند
-              تفعيل اختيار الخيمة.
-            </p>
-            {registrations.map((r) => (
+            {(selectedRegistration?[selectedRegistration]:[]).map((r) => (
               <article key={r.id} style={{ marginBottom: 18 }}>
+                {!registrationEdit && <div className="actions"><button type="button" disabled={!!overrideId||overrideBusy} onClick={()=>startRegistrationEdit(r)}>تعديل بيانات الطلب والخيمة</button><button type="button" disabled={!!overrideId||overrideBusy} onClick={()=>openRegistration(r.id)}>تحديث الطلب</button></div>}
+                {registrationEdit?.id===r.id && <section className="panel editor">
+                  <h3>تعديل بيانات الطلب</h3>
+                  {Object.entries(registrationEditableFields).filter(([key])=>!(content.activities.find(a=>a.id===r.activityId)?.kind==='camp'&&['firstName','lastName'].includes(key))).map(([key,label])=>{
+                    const activity=normalizeActivity(content.activities.find(a=>a.id===r.activityId)||{});
+                    const choices=key==='gender'?['male','female']:key==='grade'?activity.gradeOptions:key==='city'?activity.cityOptions:key==='school'?activity.schoolOptions:key==='shirtSize'?activity.shirtOptions:[];
+                    const changeValue=value=>setRegistrationEdit(current=>({...current,values:{...current.values,[key]:value,...(key==='gender'&&activity.tentsEnabled?{tentNumber:''}:{})}}));
+                    if(key==='tentNumber')return activity.tentsEnabled&&['Pending','Confirmed'].includes(r.status)?<label key={key}>{label}<select value={registrationEdit.values[key]} onChange={e=>changeValue(e.target.value)}><option value="">اختر خيمة متاحة</option>{eligibleTents(activity,registrationEdit.values.gender).map(t=>{const free=tentAvailable(activity,t.number,registrations,r.id);return <option key={t.number} value={t.number} disabled={free<=0}>الخيمة {t.number} · {free} متاح</option>})}</select></label>:null;
+                    return <label key={key}>{label}{choices.length?<select value={registrationEdit.values[key]} onChange={e=>changeValue(e.target.value)}><option value="">اختر…</option>{key!=='gender'&&!choices.includes(registrationEdit.values[key])&&registrationEdit.values[key]&&<option value={registrationEdit.values[key]}>{registrationEdit.values[key]}</option>}{choices.map(value=><option key={value} value={value}>{key==='gender'?(value==='male'?'ذكر':'أنثى'):value}</option>)}</select>:['medicalNotes','allergies'].includes(key)?<textarea rows={3} maxLength={2000} value={registrationEdit.values[key]} onChange={e=>changeValue(e.target.value)} />:<input type={key==='dob'?'date':key==='email'?'email':'text'} maxLength={200} value={registrationEdit.values[key]} onChange={e=>changeValue(e.target.value)} />}</label>;
+                  })}
+                  <div className="actions"><button type="button" disabled={registrationEditBusy||JSON.stringify(registrationEdit.values)===JSON.stringify(registrationEdit.base)} onClick={saveRegistrationEdits}>حفظ تعديلات الطلب</button><button type="button" disabled={registrationEditBusy} onClick={()=>setRegistrationEdit(null)}>إلغاء التعديلات</button></div>
+                </section>}
                 <div className="panelTitle">
                   <h2>
                     {content.activities.find((a) => a.id === r.activityId)
@@ -606,7 +685,7 @@ export default function Dashboard() {
                     {r.status === "Waiting" ? " · تفضيل غير محجوز" : ""}
                   </p>
                 )}
-                <details>
+                <details open>
                   <summary>تفاصيل الطلب</summary>
                   <p>
                     العنوان: {r.details.address} · الجنس: {r.details.gender}
@@ -649,10 +728,11 @@ export default function Dashboard() {
                 <details>
                   <summary>سجل إجراءات الطلب ({r.auditLog?.length||0})</summary>
                   {r.auditLog?.length ? <ol>{r.auditLog.map(entry=><li key={entry.id}>
-                    <strong>{({submitted:'إرسال الطلب',receipt_uploaded:'رفع وصل الدفع',cancelled:'إلغاء الطلب',receipt_accepted_and_approved:'قبول الوصل واعتماد الطلب',receipt_rejected:'طلب تصحيح الوصل',seat_allocated_payment_requested:'تخصيص مقعد وطلب الدفع',approved:'اعتماد الطلب',rejected:'رفض الطلب',approved_without_receipt:'تأكيد الطلب بدون وصل'})[entry.action]||entry.action}</strong>
+                    <strong>{({submitted:'إرسال الطلب',receipt_uploaded:'رفع وصل الدفع',cancelled:'إلغاء الطلب',receipt_accepted_and_approved:'قبول الوصل واعتماد الطلب',receipt_rejected:'طلب تصحيح الوصل',seat_allocated_payment_requested:'تخصيص مقعد وطلب الدفع',approved:'اعتماد الطلب',rejected:'رفض الطلب',approved_without_receipt:'تأكيد الطلب بدون وصل',edited:'تعديل بيانات الطلب'})[entry.action]||entry.action}</strong>
                     <p>{new Date(entry.at).toLocaleString('ar-JO',{timeZone:'Asia/Amman'})} · {entry.actor?.type==='admin'?`الإدارة · الجلسة ${entry.actor.session}`:'المسجّل'}</p>
                     <p>{entry.fromLabel||(entry.fromStatus?registrationStatusLabel({status:entry.fromStatus,receiptStatus:entry.fromReceiptStatus}):'طلب جديد')} ← {entry.toLabel||registrationStatusLabel({status:entry.toStatus,receiptStatus:entry.toReceiptStatus})}</p>
                     {entry.fromTent!==entry.toTent && <p>الخيمة: {entry.fromTent??'بدون'} ← {entry.toTent??'بدون'}</p>}
+                    {entry.changes && <ul>{Object.entries(entry.changes).map(([key,change])=><li key={key}>{registrationEditableFields[key]||(key==='age'?'العمر':key)}: {String(change.before??'—')} ← {String(change.after??'—')}</li>)}</ul>}
                     {!!entry.reason && <p>السبب: {entry.reason}</p>}
                   </li>)}</ol>:<p>لا توجد إجراءات مسجلة قبل تفعيل السجل.</p>}
                 </details>
@@ -783,9 +863,7 @@ export default function Dashboard() {
                 )}
               </article>
             ))}
-            {!registrations.length && (
-              <p className="empty">لا توجد طلبات تسجيل بعد.</p>
-            )}
+            </dialog>}
           </section>
         ) : (
           <>
