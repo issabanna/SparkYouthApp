@@ -10,6 +10,8 @@ export async function GET(request){
 }
 export async function POST(request){
  if(!service.authenticated(request)||!service.sameOrigin(request))return reply({error:'تسجيل دخول الإدارة مطلوب.'},401);
+ const actor=service.adminSessionActor(request);
+ if(!actor)return reply({error:'تسجيل دخول الإدارة مطلوب.'},401);
  let body;try{body=await request.json();}catch{return reply({error:'طلب غير صالح.'},400);}
  try{
   const row=await getRegistration(body.id);if(!row)return reply({error:'الطلب غير موجود.'},404);
@@ -18,7 +20,6 @@ export async function POST(request){
    const fresh=await getRegistration(body.id);if(!fresh)throw Error('الطلب غير موجود.');
    const current=records.map(r=>r.id===body.id?fresh.record:r);
    let result,action,reason='';
-   const actor=service.adminSessionActor(request);
    if(body.action==='receipt'){
     action=body.decision==='accepted'?'receipt_accepted_and_approved':'receipt_rejected';
     reason=String(body.note||'').slice(0,1000);
