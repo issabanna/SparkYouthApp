@@ -2,18 +2,18 @@
 
 The app uses Supabase Auth email/password sign-up and login. There is no anonymous/demo login. The old anonymous session endpoint returns 401; saved demo profile objects and 64-character bearer tokens no longer grant access. Existing private demo records remain available to admin, but are not automatically transferred or granted to newly created users.
 
-The server uses SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY already configured in Vercel. No new SQL or public browser service key is required. The service key stays on the server. Supabase handles password hashing, password policy, email confirmation and authentication rate limits. The app requires at least eight characters for new passwords. Each protected user request verifies its access JWT through Supabase getUser; the database owner hash is derived from the authenticated user UUID, so the same login sees the same records on different devices.
+The server uses SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY already configured in Vercel. No new SQL or public browser service key is required. The service key stays on the server. Supabase handles password hashing, password policy and login rate limits. New app signups are created server-side with email_confirm:true and then signed in immediately, as requested; they do not need a verification email. Existing users are never confirmed or overwritten by a duplicate signup. The app requires at least eight characters for new passwords. Each protected user request verifies its access JWT through Supabase getUser; the database owner hash is derived from the authenticated user UUID, so the same login sees the same records on different devices.
 
 ## Supabase dashboard settings
 
-In Authentication → Providers → Email, enable email sign-ups. Keep Confirm email enabled if email verification is wanted.
+In Authentication → Providers → Email, enable email sign-ups. App signups automatically confirm new accounts server-side, even if the provider Confirm email switch is enabled. Email ownership is therefore not verified by this app signup flow.
 
 In Authentication → URL Configuration set:
 
 - Site URL: `https://sparkyouth.vercel.app/app`
 - Redirect URLs: `https://sparkyouth.vercel.app/app`
 
-Confirmation links must be allowed to return to the app. The app verifies callback access tokens on the server before saving the session and immediately removes tokens from the URL fragment. If confirmation is enabled, sign-up asks the user to check their email and then sign in. SMTP/email delivery and Supabase email limits are managed in Supabase, not by the app. Do not disable confirmation to work around a broken redirect.
+These return URLs remain useful for any other Supabase email links; new app signups do not need confirmation links. The app verifies callback access tokens on the server before saving the session and immediately removes tokens from the URL fragment. New app signups sign in immediately after creation. Any older pending accounts retain their previous confirmation state and can be managed separately in Supabase. SMTP/email delivery and Supabase email limits are managed in Supabase, not by the app. The server still respects disabled email signup/provider settings, validates passwords, and applies bounded per-instance signup limits (email/IP/global). These in-memory limits are supplementary and are not a durable distributed rate limiter.
 
 ## Sessions and profile
 

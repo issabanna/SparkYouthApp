@@ -1,4 +1,5 @@
 import auth from '../../../lib/user-auth.cjs';
+import signup from '../../../lib/signup-policy.cjs';
 import service from '../../../lib/content-service.cjs';
 import { reply } from '../../../lib/registration-service';
 export const runtime = 'nodejs';
@@ -7,7 +8,7 @@ function authError(error) {
   const code = error?.code;
   if (code === 'invalid_credentials') return 'البريد الإلكتروني أو كلمة السر غير صحيحة.';
   if (code === 'email_not_confirmed') return 'يرجى تأكيد بريدك الإلكتروني من الرسالة المرسلة إليك، ثم تسجيل الدخول.';
-  if (code === 'user_already_exists') return 'تعذّر إنشاء الحساب. جرّب تسجيل الدخول أو استخدم بريدًا آخر.';
+  if (['user_already_exists','email_exists'].includes(code)) return 'تعذّر إنشاء الحساب. جرّب تسجيل الدخول أو استخدم بريدًا آخر.';
   if (['over_email_send_rate_limit', 'over_request_rate_limit'].includes(code)) return 'طلبات كثيرة. انتظر قليلًا ثم حاول مجددًا.';
   if (code === 'signup_disabled') return 'إنشاء الحسابات غير مفعّل حاليًا. تواصل مع الإدارة.';
   if (code === 'weak_password') return 'اختر كلمة سر أقوى من 8 أحرف على الأقل.';
@@ -21,6 +22,7 @@ export async function GET(request) {
   const user = await auth.userForRequest(request);
   return reply({
     configured: true,
+    autoConfirmEmail: true,
     authenticated: !!user,
     user: user ? {
       id: user.id,
@@ -53,13 +55,11 @@ export async function POST(request) {
         if (password.length < 8) return reply({
           error: 'كلمة السر يجب أن تكون 8 أحرف على الأقل.'
         }, 400);
-        result = await client.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: 'https://sparkyouth.vercel.app/app'
-          }
-        });
+        if(!signup.allowSignup(request,email))return reply({error:'طلبات كثيرة. انتظر قليلًا ثم حاول مجددًا.'},429);
+        if(!await signup.emailSignupEnabled())return reply({error:'إنشاء الحسابات غير مفعّل حاليًا. تواصل مع الإدارة.'},400);
+        const created=await client.auth.admin.createUser({email,password,email_confirm:true});
+        if(created.error)return reply({error:authError(created.error)},400);
+        result=await client.auth.signInWithPassword({email,password});
       } else result = await client.auth.signInWithPassword({
         email,
         password
