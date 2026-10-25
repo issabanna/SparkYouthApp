@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, Modal, Image, Linking, StyleSheet, AppState } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import {pickProfilePhoto} from './profile-photo';
 import { leaderRequest, accountRequest } from './registration-client';
 import AccountIdentity from './AccountIdentity';
 import BusApp from './BusApp';
@@ -22,22 +22,6 @@ const Button = ({
 }]}><Text style={[s.buttonText, orange && {
     color: '#fff'
   }]}>{children}</Text></Pressable>;
-async function pickPhoto() {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) throw Error('اسمح بالوصول للصور لاختيار الصورة.');
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    base64: true,
-    quality: .35,
-    allowsEditing: true,
-    aspect: [1, 1]
-  });
-  if (result.canceled) return null;
-  const a = result.assets[0];
-  const uri = 'data:' + (a.mimeType || 'image/jpeg') + ';base64,' + a.base64;
-  if (!a.base64 || uri.length > 665000) throw Error('اختر صورة أصغر من 500 كيلوبايت.');
-  return uri;
-}
 const empty = Object.fromEntries(leaderFields.map(([k]) => [k, '']));
 export default function Account({
   user,
@@ -50,6 +34,7 @@ export default function Account({
   const [data, setData] = useState(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
+    [photoMessage,setPhotoMessage] = useState(''),
     [screen, setScreen] = useState(null),
     [form, setForm] = useState(empty),
     [consent, setConsent] = useState(false),
@@ -62,7 +47,7 @@ export default function Account({
     try {
       const [result, saved] = await Promise.all([leaderRequest(), accountRequest()]);
       setData(result);
-      setAccount(saved.account);
+      setAccount(current=>current?.updatedAt&&saved.account?.updatedAt&&current.updatedAt>saved.account.updatedAt?current:saved.account);
       setError('');
     } catch (e) {
       setError(e.message);
@@ -114,19 +99,9 @@ export default function Account({
       setError('تعذّر فتح الرابط.');
     }
   };
-  return <View style={s.account}><Text style={s.title}>حسابي</Text><View style={s.identity}>{account?.photo || profile.photo ? <Image source={{
-        uri: account?.photo || profile.photo
-      }} style={s.avatar} /> : <View style={[s.avatar, {
-        backgroundColor: '#fff0df',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }]}><Text style={{
-          fontSize: 34
-        }}>☺</Text></View>}<Text style={s.title}>{user.name}</Text></View>
- <Button onPress={() => setScreen('identity')}>معلومات الحساب</Button>
- <Button onPress={() => setScreen('password')}>تعديل كلمة السر</Button>
- <Button disabled={busy} onPress={() => act(async () => {
-      const uri = await pickPhoto();
+  const changePhoto=()=>act(async()=>{
+      setPhotoMessage('');
+      const uri = await pickProfilePhoto();
       if (uri) {
         if (!account) {
           setScreen('identity');
@@ -143,7 +118,22 @@ export default function Account({
           photo: uri
         });
       }
-    })}>تعديل صورة الحساب</Button>
+      if(uri)setPhotoMessage('تم تحديث صورة الحساب.');
+    });
+
+  return <View style={s.account}><Text style={s.title}>حسابي</Text><View style={s.identity}><Pressable accessibilityRole="button" accessibilityLabel="تغيير صورة الملف الشخصي" disabled={busy} onPress={changePhoto}>{account?.photo || profile.photo ? <Image source={{
+        uri: account?.photo || profile.photo
+      }} style={s.avatar} /> : <View style={[s.avatar, {
+        backgroundColor: '#fff0df',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }]}><Text style={{
+          fontSize: 34
+        }}>☺</Text></View>}</Pressable><Text style={s.title}>{user.name}</Text></View>
+ <Button onPress={() => setScreen('identity')}>معلومات الحساب</Button>
+ <Button onPress={() => setScreen('password')}>تعديل كلمة السر</Button>
+ <Button disabled={busy} onPress={changePhoto}>{busy?'جارٍ تحديث الصورة…':'تعديل صورة الحساب'}</Button>
+ {!!photoMessage&&<Text accessibilityRole="status" style={s.text}>{photoMessage}</Text>}
  <Button onPress={onNotifications}>الإشعارات</Button>
  <Button onPress={() => setScreen('privacy')}>سياسة الخصوصية</Button>
  <Button onPress={() => setScreen('contact')}>تواصل معنا</Button>
