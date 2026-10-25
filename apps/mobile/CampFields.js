@@ -84,6 +84,7 @@ export function CampExtra({
   errors,
   field,
   onImage,
+  sharedRegistration = false,
 }) {
   return (
     <>
@@ -118,7 +119,7 @@ export function CampExtra({
         صورة الهوية {activity.requireIdDocument && !activity.registrationTestMode ? "(مطلوبة)" : "(اختيارية)"}
       </Text>
       <Text style={s.note}>
-        معاينة محلية فقط. استخدم صورة تجريبية، ولا ترفع وثيقة هوية حقيقية الآن.
+        {sharedRegistration ? 'تُرسل هذه الصورة إلى إدارة المخيم بصورة خاصة.' : 'معاينة محلية فقط. استخدم صورة تجريبية.'}
       </Text>
       <Text style={s.note}>عند اختيار الصورة، تُرسل إلى خدمة OpenAI لفحص نوعها ووضوحها فقط، دون التحقق من الهوية أو صحة الوثيقة.</Text>
       <Pressable accessibilityRole="button" disabled={details.idDocument?.aiCheck?.status === "checking"} onPress={onImage} style={s.upload}>

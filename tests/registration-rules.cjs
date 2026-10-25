@@ -11,6 +11,7 @@ const user = { name: "مشارك تجريبي" };
 const activity = normalizeActivity({
   ...defaultContent.activities[0],
   capacity: 1,
+  requireReceipt: false,
   seatsTaken: 0,
 });
 const details = {

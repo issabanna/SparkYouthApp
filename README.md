@@ -1,6 +1,6 @@
 # Spark Youth
 
-Arabic-first replacement foundation: Expo mobile app (Android/iOS) and Next.js web administration. UI copy is prepared for future English localization; mobile strings live in packages/shared. Published content and images can use Supabase with password-protected admin publishing. Camper accounts, registration records, leader approvals and attendance remain prototypes; no Adalo data has been migrated.
+Arabic-first replacement foundation: Expo mobile app (Android/iOS) and Next.js web administration. UI copy is prepared for future English localization; mobile strings live in packages/shared. Published content and images can use Supabase with password-protected admin publishing. Registration and receipt records use private Supabase storage after migration 002; camper sign-in, leader approvals and attendance remain prototypes. No Adalo data has been migrated.
 
 ## Development
 
@@ -15,7 +15,7 @@ Use the existing checkout; a separate worktree is unnecessary.
 ## Next implementation milestones
 
 1. Database and authenticated Youth / Leader / Admin permissions enforced by the backend.
-2. Shared backend persistence and transactional camper/tent/receipt/approval rules for the implemented Arabic registration UI.
+2. Run the shared registration migration and replace device-session ownership with authenticated camper accounts and recovery.
 3. Per-admin accounts and server-side audit records for program and registration management.
 4. Shared learning comments, notifications and QR/bus attendance.
 5. Adalo migration planning, privacy/guardian requirements, device testing and store delivery.
@@ -32,7 +32,7 @@ The wall has been removed. The mobile preview now starts with a clearly marked d
 
 The admin can add, edit, reorder, publish and remove content and moderate local comments. The overview accepts an original PNG/JPEG/WebP logo under 500 kB on a white background. Seed camp illustrations are placeholders, not real camp photographs. Activity dates intentionally remain unset pending actual scheduling.
 
-Content is persisted in browser localStorage under `spark-camp-content-v1`; progress is under `spark-camp-profile-v1`. Admin and `/app` must use the same origin/browser to share content. Native builds currently use sample content in memory and do not persist or synchronize progress. No real passwords, account approval, multiuser rankings or cross-device synchronization are implemented. Do not treat this prototype as secure member access. A shared backend and authenticated roles are required before real camper data is used.
+With Supabase configured, admin content is privately stored and published through the server; localStorage is the unconfigured preview fallback. Shared registrations and receipts require [migration 002](supabase/002_registrations_and_receipts.sql). See [payment setup and the device-session limitations](docs/registration-payments.md). Progress/sign-in are still previews; there is no authenticated account recovery or cross-device member access.
 
 ### Browser regression check
 
@@ -56,9 +56,9 @@ Run `node tests/registration-rules.cjs` for registration rules and migration che
 
 ## Camp configuration and tent allocation
 
-Admin can configure start/end/visitor dates, departure/arrival date-times, displayed fees/currency, instructions before and after registration, inclusive date-of-birth limits and gender-specific waiting-list availability. Fees are displayed only; no payment is charged. Local image uploads accept PNG/JPEG/WebP up to 500 kB because content is stored in browser storage.
+Admin can configure the activity date, fees/currency, instructions before registration, payment instructions after submission, approved-only instructions, inclusive date-of-birth limits and waiting-list availability. City/school/shirt choices are shared; collection switches are per activity. A camp's grade dropdown is its grade eligibility list. No payment is charged by the app; campers upload receipts for admin review.
 
-Optional tent selection applies only to camps: male tents 0–6, female tents 7–13; each defaults to 10 places. Admin can adjust each tent's capacity and external occupancy while registration is open. Pending and Confirmed reserve tent places. Cancelled, Rejected and Waiting do not. Capacity cannot be reduced below occupied places. Overall camp capacity is a separate ceiling. Applicants outside the configured male/female tent groups are directed to contact admin for accommodation rather than assigned an incompatible tent.
+Optional tent selection applies only to camps: male tents 0–6, female tents 7–13; each defaults to 10 places. Admin can adjust each tent's capacity while registration is open. Pending and Confirmed reserve tent places. Cancelled, Rejected and Waiting do not. Capacity cannot be reduced below occupied places. Overall camp capacity is a separate ceiling. Applicants outside the configured male/female tent groups are directed to contact admin for accommodation rather than assigned an incompatible tent.
 
 Camp registration modes are Standard, Waiting list only, and Closed. A separate inactive display switch disables catalog actions; unpublished activities are hidden. Closed/inactive displays «غير فعّال», without implying the activity is coming soon. In Waiting-list-only mode, numbered tents are hidden and a single «قائمة الانتظار» choice is shown. All requests stay Waiting, even if space becomes available; they have no assigned tent and reserve no place. Admin must explicitly select a gender-appropriate tent with capacity and confirm. Standard camp registration does not automatically turn on a waiting list when full. Existing non-camp activity waitlists keep their previous behavior.
 
@@ -91,3 +91,7 @@ Camp cards now use taller framed color bands, larger circular photos, oversized 
 See [image publishing setup](docs/image-publishing.md) and run [the Supabase SQL setup](supabase/001_content_and_images.sql) in the chosen project. Admins can upload content photos from their device; configured Supabase storage publishes them to the app. Sample photos are bundled into the native APK. See [Android preview builds](docs/android-preview.md) for APK verification and download metadata.
 
 When server-side Supabase settings are configured, `npm run build` also imports the initial sample images into the private bucket and connects their references to admin content. This importer preserves custom uploads/settings and skips already migrated content; see `docs/image-publishing.md`.
+
+## Shared payment workflow
+
+Run [002_registrations_and_receipts.sql](supabase/002_registrations_and_receipts.sql) and follow [registration payment setup](docs/registration-payments.md). The workflow is waiting for payment → receipt review → approval. Admin acceptance of a receipt also approves the request; rejection lets the camper re-upload. Approval instructions are excluded from public content and returned only for approved owner registrations. Returning requests use the same browser/device session for now.

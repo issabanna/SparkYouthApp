@@ -3,16 +3,6 @@ import checker from '../../../lib/registration-image-check.cjs';
 import {readContent} from '../../../lib/content-store';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-const requests=new Map();
-let total=0,resetAt=0;
-function allow(request){
- const now=Date.now();
- if(now>resetAt){requests.clear();total=0;resetAt=now+3600000;}
- const ip=request.headers.get('x-vercel-forwarded-for')||request.headers.get('x-forwarded-for')||'unknown';
- const count=requests.get(ip)||0;
- if(count>=5||total>=100)return false;
- requests.set(ip,count+1);total++;return true;
-}
 const reply=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
 export async function POST(request){
  if(!service.sameOrigin(request))return reply({status:'unavailable'},403);
@@ -24,7 +14,7 @@ export async function POST(request){
   const content=service.publicContent(await readContent()||service.defaultContent);
   const activity=content.activities.find(a=>a.id===value.activityId&&a.kind==='camp'&&!a.inactive&&a.registrationOpen);
   if(!activity)return reply({status:'unavailable'},404);
-  if(!allow(request))return reply({status:'unavailable',message:'وصلت للحد المؤقت لفحص الصور. حاول لاحقًا.'},429);
+  if(!checker.allowImageCheck(request))return reply({status:'unavailable',message:'وصلت للحد المؤقت لفحص الصور. حاول لاحقًا.'},429);
   return reply(await checker.checkImage(value.image,{apiKey:process.env.OPENAI_API_KEY}));
  }catch{return reply({status:'unavailable',message:'تعذّر فحص الصورة الآن. حاول مجددًا.'},502);}
 }

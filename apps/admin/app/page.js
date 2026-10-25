@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {prepareImage, imageData} from "../lib/prepare-image";
 import {
   reviewReceipt,
+  registrationStatusLabel,
   validateCampSettings,
   tentOccupancy,
   tentAvailable,
@@ -100,7 +101,21 @@ export default function Dashboard() {
     }catch(error){setCloudMessage(error.message||'تعذّر النشر.')}finally{setBusy(false)}
   }
 
+  const registrationRemote = useRef(false);
+  const [registrationStorageError, setRegistrationStorageError] = useState('');
   const [registrations, setRegistrations] = useState([]);
+  useEffect(()=>{
+    if(cloud!=='remote')return;
+    registrationRemote.current=true;
+    let active=true;
+    const refresh=async()=>{try{const response=await fetch('/api/admin/registrations',{cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error);if(active){setRegistrations(result.records);setRegistrationStorageError('');}}catch(error){if(active)setRegistrationStorageError(error.message||'تعذّر تحميل التسجيلات.');}};
+    refresh();const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);
+    return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',refresh)};
+  },[cloud]);
+  const remoteRegistrationAction=async(body)=>{
+    try{const response=await fetch('/api/admin/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json();if(!response.ok)throw Error(result.error);setRegistrations(result.records);setMessage(body.action==='receipt'&&body.decision==='accepted'?'تم قبول الوصل واعتماد الطلب.':'تم تحديث الطلب.');}
+    catch(error){setMessage(error.message||'تعذّر تحديث الطلب.');}
+  };
   const [tentAssignments, setTentAssignments] = useState({});
   const [content, setContent] = useState(defaultContent),
     [section, setSection] = useState("overview"),
@@ -118,12 +133,12 @@ export default function Dashboard() {
       }
     } catch {}
     try {
-      setRegistrations(JSON.parse(localStorage.getItem(registrationKey)) || []);
+      if(!registrationRemote.current)setRegistrations(JSON.parse(localStorage.getItem(registrationKey)) || []);
     } catch {}
     setReady(true);
     const refresh = () => {
       try {
-        setRegistrations(
+        if(!registrationRemote.current)setRegistrations(
           JSON.parse(localStorage.getItem(registrationKey)) || [],
         );
       } catch {}
@@ -244,6 +259,7 @@ export default function Dashboard() {
   };
   const change = (key, value) => setDraft({ ...draft, [key]: value });
   const review = (id, status) => {
+    if(cloud==='remote'){remoteRegistrationAction({action:'status',id,status,tent:tentAssignments[id]});return;}
     try {
       const latest = JSON.parse(localStorage.getItem(registrationKey)) || [];
       const latestContent = normalizeContent(
@@ -268,9 +284,11 @@ export default function Dashboard() {
     }
   };
   const verifyReceipt = (id, decision) => {
+    if(cloud==='remote'){remoteRegistrationAction({action:'receipt',id,decision});return;}
     try {
       const latest = JSON.parse(localStorage.getItem(registrationKey)) || [];
-      const result = reviewReceipt(latest, id, decision);
+      let result = reviewReceipt(latest, id, decision);
+      if(!result.error && decision==='accepted')result=changeRegistrationStatus(result.records,id,'Confirmed',content.activities);
       if (result.error) {
         setMessage(result.error);
         return;
@@ -279,7 +297,7 @@ export default function Dashboard() {
       setRegistrations(result.records);
       setMessage(
         decision === "accepted"
-          ? "تم قبول الوصل. يمكنك الآن تأكيد الطلب."
+          ? "تم قبول الوصل واعتماد الطلب."
           : "تم طلب إعادة رفع الوصل.",
       );
     } catch {
@@ -401,6 +419,7 @@ export default function Dashboard() {
           </h1>
           <p>أعلن عن المغامرة القادمة، شارك لحظاتها، وافتح بابًا للتعلّم.</p>
         </section>
+        {registrationStorageError && <p role="alert" className="status">{registrationStorageError} شغّل 002_registrations_and_receipts.sql في Supabase لإكمال الإعداد.</p>}
         {message && (
           <p role="status" className="status">
             {message}
@@ -515,7 +534,7 @@ export default function Dashboard() {
                     {content.activities.find((a) => a.id === r.activityId)
                       ?.title || r.activityTitle}
                   </h2>
-                  <span>{statuses[r.status]}</span>
+                  <span>{registrationStatusLabel(r)}</span>
                 </div>
                 <p>
                   {r.details.firstName} {r.details.lastName} · {r.reference}
@@ -528,8 +547,7 @@ export default function Dashboard() {
                   {r.details.registrationRole === "leader"
                     ? "طلب مرشد · يحتاج اعتمادًا منفصلًا"
                     : "مشارك"}{" "}
-                  · {r.details.meals ? "وجبات مطلوبة" : "بدون وجبات"} ·{" "}
-                  {r.details.transport ? "مواصلات مطلوبة" : "بدون مواصلات"}
+
                 </p>
                 {r.details.tentNumber != null && (
                   <p>
@@ -567,7 +585,7 @@ export default function Dashboard() {
                   {r.details.idDocument?.uri && (
                     <img
                       src={r.details.idDocument.uri}
-                      alt="وثيقة المشارك التجريبية"
+                      alt="وثيقة المشارك"
                       style={{
                         maxWidth: 220,
                         maxHeight: 180,
@@ -592,7 +610,7 @@ export default function Dashboard() {
                     </p>
                     <img
                       src={r.receipt.uri}
-                      alt="وصل الإيداع التجريبي"
+                      alt="وصل الإيداع"
                       style={{
                         maxWidth: 240,
                         maxHeight: 200,
@@ -605,7 +623,7 @@ export default function Dashboard() {
                           className="plain"
                           onClick={() => verifyReceipt(r.id, "accepted")}
                         >
-                          قبول وصل الإيداع
+                          قبول الوصل واعتماد الطلب
                         </button>
                         <button
                           className="danger"
@@ -682,25 +700,14 @@ export default function Dashboard() {
                         review(
                           r.id,
                           r.status === "Waiting" &&
-                            r.campFormVersion === 2 &&
-                            r.feeAmount > 0 &&
-                            normalizeActivity(
-                              content.activities.find(
-                                (a) => a.id === r.activityId,
-                              ) || {},
-                            ).requireReceipt
+                            (r.paymentRequired ?? r.feeAmount > 0)
                             ? "Pending"
                             : "Confirmed",
                         )
                       }
                     >
                       {r.status === "Waiting" &&
-                      r.campFormVersion === 2 &&
-                      r.feeAmount > 0 &&
-                      normalizeActivity(
-                        content.activities.find((a) => a.id === r.activityId) ||
-                          {},
-                      ).requireReceipt
+                      (r.paymentRequired ?? r.feeAmount > 0)
                         ? "تخصيص المقعد وطلب الدفع"
                         : "تأكيد الطلب"}
                     </button>
@@ -918,6 +925,7 @@ export default function Dashboard() {
                           "afterRegistrationInstructions",
                           "تعليمات بعد التسجيل",
                         ],
+                        ["approvedInstructions", "تعليمات بعد الموافقة"],
                       ].map(([key, label]) => (
                         <label key={key}>
                           {label}
@@ -933,6 +941,8 @@ export default function Dashboard() {
                     <fieldset className="campSettings">
                       <legend>البيانات المطلوبة أثناء التسجيل</legend>
                       <p>قوائم الخيارات مشتركة وتُعدّل من الإعدادات العامة.</p>
+                      <label className="checkbox"><input type="checkbox" checked={draft.requireReceipt ?? true}
+                        onChange={e => change("requireReceipt",e.target.checked)} />طلب الدفع ورفع وصل قبل الموافقة</label>
                       {[["collectCity", "السؤال عن المدينة"], ["collectSchool", "السؤال عن المدرسة"], ["collectShirtSize", "السؤال عن مقاس التيشيرت"]].map(([key,label]) => (
                         <label key={key} className="checkbox"><input type="checkbox" checked={draft[key] ?? normalizeActivity(draft)[key]}
                           onChange={e => change(key,e.target.checked)} />{label}</label>
@@ -986,10 +996,6 @@ export default function Dashboard() {
                           ["requireNationalId", "طلب الرقم الوطني"],
                           ["requireIdDocument", "طلب صورة الهوية"],
                           ["collectMedical", "جمع التوصيات الطبية والحساسية"],
-                          [
-                            "requireReceipt",
-                            "اشتراط قبول وصل الإيداع قبل تأكيد الطلب المدفوع",
-                          ],
                         ].map(([key, label]) => (
                           <label key={key} className="checkbox">
                             <input

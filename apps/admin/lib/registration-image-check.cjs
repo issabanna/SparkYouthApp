@@ -24,4 +24,11 @@ async function checkImage(uri,{apiKey,fetcher=fetch}={}){
  const result=await response.json();
  return normalizeResult(JSON.parse(result.choices?.[0]?.message?.content||''));
 }
-module.exports={parseImage,normalizeResult,checkImage};
+const imageRequests=new Map();let imageTotal=0,imageResetAt=0;
+function allowImageCheck(request){
+ const now=Date.now();if(now>imageResetAt){imageRequests.clear();imageTotal=0;imageResetAt=now+3600000;}
+ const ip=request.headers.get('x-vercel-forwarded-for')||request.headers.get('x-forwarded-for')||'unknown';
+ const count=imageRequests.get(ip)||0;if(count>=5||imageTotal>=100)return false;
+ imageRequests.set(ip,count+1);imageTotal++;return true;
+}
+module.exports={parseImage,normalizeResult,checkImage,allowImageCheck};

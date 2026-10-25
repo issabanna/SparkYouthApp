@@ -16,6 +16,7 @@ const activityDefaults = {
   currency: "JOD",
   instructions: "",
   afterRegistrationInstructions: "",
+  approvedInstructions: "",
   startInstructions: "",
   dobMin: "",
   dobMax: "",
@@ -366,6 +367,7 @@ function submitRegistration(activity, user, details, records, consent) {
       testRegistration: a.registrationTestMode === true,
       feeAmount: Number(a.fees || 0),
       currency: a.currency,
+      paymentRequired: a.requireReceipt !== false,
       receiptStatus: "notSubmitted",
       details: {
         ...details,
@@ -430,9 +432,7 @@ function changeRegistrationStatus(
   }
   if (
     status === "Confirmed" &&
-    current.campFormVersion === 2 &&
-    a?.requireReceipt &&
-    Number(current.feeAmount) > 0 &&
+    (current.paymentRequired ?? (a?.requireReceipt && Number(current.feeAmount) > 0)) &&
     current.receiptStatus !== "accepted"
   )
     return {
@@ -576,3 +576,13 @@ module.exports.reviewReceipt = (records, id, decision, note = "") => {
     ),
   };
 };
+
+module.exports.registrationStatusLabel = (record) => {
+  if (record.status === "Confirmed") return "تمت الموافقة";
+  if (record.status !== "Pending") return statuses[record.status] || record.status;
+  if (record.receiptStatus === "pendingReview") return "الوصل قيد المراجعة";
+  if (record.receiptStatus === "accepted" || record.paymentRequired === false) return "بانتظار موافقة الإدارة";
+  return "بانتظار الدفع";
+};
+module.exports.registrationInstructions = (activity, record) => record.status === "Confirmed"
+  ? activity?.approvedInstructions || record.instructionText || "" : record.status === "Pending" ? activity?.afterRegistrationInstructions || record.instructionText || "" : "";

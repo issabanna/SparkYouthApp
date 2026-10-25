@@ -11,6 +11,7 @@ import {
   Platform,
   StyleSheet,
 } from "react-native";
+import {registrationRequest} from "./registration-client";
 import BirthDatePicker from "./BirthDatePicker";
 import CampPoster from "./CampPoster";
 import MediaImage from "./MediaImage";
@@ -19,6 +20,8 @@ import { CampIdentity, CampExtra, RegistrationChoices, pickPreviewImage } from "
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   displayRange,
+  registrationStatusLabel,
+  registrationInstructions,
   saveReceipt,
   tentError,
   tentAvailable,
@@ -106,6 +109,23 @@ const blank = (user) => ({
 });
 export default function Registrations({ content, user, onDone }) {
   const imageCheckRequest = useRef(0);
+  const [registrationMode, setRegistrationMode] = useState('loading');
+  const [savingRegistration, setSavingRegistration] = useState(false);
+  const sharedRecords = useRef(false);
+  const sharedBusy = useRef(false), sharedRefreshVersion = useRef(0);
+  const applyShared = (result) => {
+    const own=result.records.map(r=>({...r,ownerKey:ownerKey(user)}));
+    const ids=new Set(own.map(r=>r.id));
+    setRecords([...own,...(result.occupancy||[]).filter(r=>!ids.has(r.id))]);
+    sharedRecords.current=true;setRegistrationMode('shared');
+  };
+  useEffect(()=>{
+    let active=true;
+    const refresh=async()=>{if(sharedBusy.current)return;const version=++sharedRefreshVersion.current;try{const result=await registrationRequest();if(!active||version!==sharedRefreshVersion.current)return;if(result.shared===false){setRegistrationMode('local');return;}applyShared(result);}catch(error){if(active&&version===sharedRefreshVersion.current){setRegistrationMode('error');setMessage(error.message);}}};
+    refresh();const timer=setInterval(refresh,30000);
+    if(Platform.OS==='web')window.addEventListener('focus',refresh);
+    return()=>{active=false;clearInterval(timer);if(Platform.OS==='web')window.removeEventListener('focus',refresh)};
+  },[user]);
   useEffect(() => () => { imageCheckRequest.current++; }, []);
   const [records, setRecords] = useState(read),
     [filter, setFilter] = useState("all"),
@@ -125,7 +145,7 @@ export default function Registrations({ content, user, onDone }) {
     [ticketId, setTicketId] = useState(null);
   useEffect(() => {
     if (Platform.OS !== "web") return;
-    const refresh = () => setRecords(read());
+    const refresh = () => {if(!sharedRecords.current)setRecords(read());};
     window.addEventListener("focus", refresh);
     window.addEventListener("storage", refresh);
     return () => {
@@ -269,8 +289,14 @@ export default function Registrations({ content, user, onDone }) {
     setErrors(e);
     if (!Object.keys(e).length) setStep(1);
   };
-  const submit = () => {
-    if (idChecking) return;
+  const submit = async () => {
+    if (idChecking || savingRegistration) return;
+    if (registrationMode === 'loading' || registrationMode === 'error') {setMessage('التسجيل غير متاح الآن. يرجى إعادة المحاولة بعد اكتمال الاتصال.');return;}
+    if (registrationMode === 'shared') {
+      sharedBusy.current=true;sharedRefreshVersion.current++;setSavingRegistration(true);
+      try {const result=await registrationRequest({action:'submit',activityId:activity.id,name:user.name,details,consent});applyShared(result);setSuccess(result.records.find(r=>r.id===result.recordId));setStep(successStep);}
+      catch(error){setMessage(error.message);}finally{sharedBusy.current=false;setSavingRegistration(false);}return;
+    }
     const latest = Platform.OS === "web" ? read() : records;
     const result = submitRegistration(activity, user, details, latest, consent);
     if (result.error) {
@@ -313,7 +339,14 @@ export default function Registrations({ content, user, onDone }) {
     } catch (error) { setMessage(error.message); }
     finally {if (requestId === imageCheckRequest.current) setIdChecking(false);}
   };
-  const uploadReceipt = () => {
+  const uploadReceipt = async () => {
+    if(savingRegistration)return;
+    if(registrationMode==='shared'){
+      sharedBusy.current=true;sharedRefreshVersion.current++;setSavingRegistration(true);
+      try{const result=await registrationRequest({action:'receipt',id:receiptId,image:receiptImage,reference:receiptReference});applyShared(result);setReceiptId(null);setMessage('تم إرسال الوصل إلى الإدارة. طلبك الآن بانتظار مراجعة الدفع.');setFilter('mine');}
+      catch(error){setMessage(error.message);}finally{sharedBusy.current=false;setSavingRegistration(false);}return;
+    }
+    if(registrationMode!=='local'){setMessage('الاتصال بخادم التسجيل مطلوب.');return;}
     const latest = Platform.OS === "web" ? read() : records;
     const result = saveReceipt(
       latest,
@@ -339,7 +372,12 @@ export default function Registrations({ content, user, onDone }) {
       setMessage(error.message);
     }
   };
-  const cancel = () => {
+  const cancel = async () => {
+    if(registrationMode==='shared' && cancelId!=='draft'){
+      if(savingRegistration)return;sharedBusy.current=true;sharedRefreshVersion.current++;setSavingRegistration(true);
+      try{applyShared(await registrationRequest({action:'cancel',id:cancelId}));setCancelId(null);}
+      catch(error){setMessage(error.message);}finally{sharedBusy.current=false;setSavingRegistration(false);}return;
+    }
     const latest = Platform.OS === "web" ? read() : records;
     const r = changeRegistrationStatus(
       latest,
@@ -430,7 +468,7 @@ export default function Registrations({ content, user, onDone }) {
                     }
                     size={18}
                   />
-                  <Text>{statuses[r.status]}</Text>
+                  <Text>{registrationStatusLabel(r)}</Text>
                 </View>
                 <Text style={s.title}>
                   {activities.find((a) => a.id === r.activityId)?.title ||
@@ -446,22 +484,14 @@ export default function Registrations({ content, user, onDone }) {
                     {r.status === "Waiting" ? " · تفضيل غير محجوز" : ""}
                   </Text>
                 )}
-                {!!activities.find((a) => a.id === r.activityId)
-                  ?.afterRegistrationInstructions && (
-                  <Text style={s.info}>
-                    {
-                      activities.find((a) => a.id === r.activityId)
-                        .afterRegistrationInstructions
-                    }
-                  </Text>
-                )}
+                {!!registrationInstructions(activities.find(a=>a.id===r.activityId),r) && <Text style={s.info}>{registrationInstructions(activities.find(a=>a.id===r.activityId),r)}</Text>}
                 <Text style={s.body}>
                   {r.status === "Pending"
-                    ? "طلبك بانتظار مراجعة الإدارة؛ لا يعني تأكيد المشاركة."
+                    ? r.receiptStatus === 'pendingReview' ? "تم استلام الوصل، بانتظار مراجعة الإدارة." : r.paymentRequired !== false && r.receiptStatus !== 'accepted' ? "تم استلام طلبك. يرجى إتمام الدفع ورفع وصل الإيداع." : "طلبك بانتظار موافقة الإدارة."
                     : r.status === "Waiting"
                       ? "سننتظر توفر مكان وموافقة الإدارة."
                       : r.status === "Confirmed"
-                        ? "تمت الموافقة على طلبك في المعاينة."
+                        ? "تمت الموافقة على طلبك."
                         : ""}
                 </Text>
                 {!!r.feeAmount && (
@@ -469,7 +499,7 @@ export default function Registrations({ content, user, onDone }) {
                     المبلغ المطلوب: {r.feeAmount} {r.currency}
                   </Text>
                 )}
-                {r.status === "Pending" && (r.feeAmount > 0 || r.receipt) && (
+                {r.status === "Pending" && (r.paymentRequired !== false || r.feeAmount > 0 || r.receipt) && (
                   <>
                     <Text style={s.meta}>
                       {r.receiptStatus === "accepted"
@@ -643,8 +673,7 @@ export default function Registrations({ content, user, onDone }) {
         </>
       )}
       <Text style={s.note}>
-        طلبات تجريبية محفوظة في هذا المتصفح. لا تُرسل إلى فريق المخيم ولا تحجز
-        أماكن فعلية.
+        {registrationMode === 'shared' ? 'تُرسل طلباتك ووصولات الدفع إلى إدارة المخيم. يمكنك العودة إلى تسجيلاتي لمتابعة الحالة.' : registrationMode === 'local' ? 'معاينة محلية: الطلبات محفوظة في هذا المتصفح فقط.' : 'جارٍ الاتصال بخادم التسجيل…'}
       </Text>
       <Modal
         visible={!!activity}
@@ -795,6 +824,7 @@ export default function Registrations({ content, user, onDone }) {
                         field,
                       }}
                       onImage={chooseId}
+                      sharedRegistration={registrationMode === 'shared'}
                     />
                     <Action disabled={idChecking} onPress={nextCampExtra}>
                       {activity.registrationMode === "waitingList" ? "التالي: قائمة الانتظار" : hasTentStep ? "التالي: اختيار الخيمة" : "التالي: مراجعة الطلب"}
@@ -998,7 +1028,7 @@ export default function Registrations({ content, user, onDone }) {
                       بيانات تجريبية فقط؛ لا تدخل معلومات حساسة أو بيانات حقيقية
                       لقاصرين.
                     </Text>
-                    <Action disabled={!consent} onPress={submit}>
+                    <Action disabled={!consent || savingRegistration || registrationMode === 'loading' || registrationMode === 'error'} onPress={submit}>
                       إرسال طلب التسجيل
                     </Action>
                     <Action secondary onPress={() => setStep(hasTentStep ? servicesStep : isCamp ? 1 : 0)}>
@@ -1015,17 +1045,13 @@ export default function Registrations({ content, user, onDone }) {
                   <>
                     <View style={s.success}>
                       <Ionicons name="checkmark-circle" size={64} />
-                      <Text style={s.heading}>{statuses[success.status]}</Text>
+                      <Text style={s.heading}>{registrationStatusLabel(success)}</Text>
                       <Text style={s.body}>
                         {success.status === "Waiting"
-                          ? "أضفناك إلى قائمة الانتظار في المعاينة دون حجز مكان أو خيمة."
-                          : "تم حفظ طلبك للمراجعة في المعاينة. المشاركة غير مؤكدة حتى الموافقة."}
+                          ? "أضفناك إلى قائمة الانتظار دون حجز مكان أو خيمة."
+                          : success.paymentRequired !== false ? "تم استلام طلبك. يرجى إتمام الدفع ورفع وصل الإيداع من هنا أو من تسجيلاتي." : "تم استلام طلبك، بانتظار موافقة الإدارة."}
                       </Text>
-                      {!!activity.afterRegistrationInstructions && (
-                        <Text style={s.info}>
-                          {activity.afterRegistrationInstructions}
-                        </Text>
-                      )}
+                      {!!registrationInstructions(activity,success) && <Text style={s.info}>{registrationInstructions(activity,success)}</Text>}
                       {success.details.tentNumber != null && (
                         <Text style={s.body}>
                           الخيمة {success.details.tentNumber}
@@ -1038,7 +1064,7 @@ export default function Registrations({ content, user, onDone }) {
                         {success.reference}
                       </Text>
                     </View>
-                    {success.status === "Pending" && success.feeAmount > 0 && (
+                    {success.status === "Pending" && (success.paymentRequired !== false || success.feeAmount > 0) && (
                       <Action
                         onPress={() => {
                           setReceiptId(success.id);
@@ -1106,8 +1132,7 @@ export default function Registrations({ content, user, onDone }) {
                 records.find((r) => r.id === receiptId)?.activityTitle}
             </Text>
             <Text style={s.note}>
-              معاينة محلية: استخدم صورة وصل وهمية فقط. لا يتم إرسال المال أو
-              التحقق المصرفي هنا.
+              ارفع صورة واضحة لوصل الإيداع وأدخل رقمه المرجعي. ستراجع الإدارة الوصل قبل اعتماد طلبك.
             </Text>
             <Action onPress={chooseReceipt}>اختيار صورة الوصل</Action>
             {receiptImage && (
@@ -1129,7 +1154,7 @@ export default function Registrations({ content, user, onDone }) {
             />
             {!!message && <Text style={s.error}>{message}</Text>}
             <Action
-              disabled={!receiptImage || !receiptReference.trim()}
+              disabled={!receiptImage || !receiptReference.trim() || savingRegistration}
               onPress={uploadReceipt}
             >
               تأكيد رفع الوصل
@@ -1179,8 +1204,7 @@ export default function Registrations({ content, user, onDone }) {
                     <Text style={s.title}>الخيمة {r.details.tentNumber}</Text>
                   )}
                   <Text style={s.info}>
-                    {activities.find((a) => a.id === r.activityId)
-                      ?.afterRegistrationInstructions ||
+                    {registrationInstructions(activities.find((a) => a.id === r.activityId),r) ||
                       "أبرز البطاقة عند الوصول بعد تفعيل نظام التحقق."}
                   </Text>
                   <Text style={s.note}>

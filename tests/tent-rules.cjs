@@ -17,6 +17,7 @@ const a = normalizeActivity({
   title: "Camp",
   published: true,
   capacity: 100,
+  requireReceipt: false,
   tentsEnabled: true,
 });
 assert.equal(a.tents.length, 14);

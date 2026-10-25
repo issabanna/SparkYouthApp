@@ -18,7 +18,11 @@ function cookie(password, secure) {
 }
 function sameOrigin(request) {
   const origin=request.headers.get('origin');
-  return !origin || origin===new URL(request.url).origin;
+  if (!origin) return true;
+  const target = new URL(request.url);
+  const host = request.headers.get('host') || target.host;
+  const protocol = (request.headers.get('x-forwarded-proto') || target.protocol.slice(0,-1)).split(',')[0].trim();
+  return ['http','https'].includes(protocol) && origin === `${protocol}://${host}`;
 }
 function validPassword(value) {
   const digest=v=>crypto.createHash('sha256').update(v).digest();
@@ -39,7 +43,7 @@ function publicContent(value) {
       ...(typeof c.branding.logo==='string'?{logo:c.branding.logo}:{}),
       ...(typeof c.branding.welcomeImage==='string'?{welcomeImage:c.branding.welcomeImage}:{}),
     }}:{}),
-    activities:c.activities.filter(x=>x.published),
+    activities:c.activities.filter(x=>x.published).map(({approvedInstructions,...activity})=>activity),
     announcements:c.announcements.filter(x=>x.published),
     galleries:c.galleries.filter(x=>x.published),
     journeys:c.journeys.filter(x=>x.published&&x.audience==='campers'),

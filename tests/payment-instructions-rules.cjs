@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict');
+const shared=require('../packages/shared');
+const {publicContent,sameOrigin}=require('../apps/admin/lib/content-service.cjs');
+const {demoImage}=require('./camp-fixtures.cjs');
+const a=shared.normalizeActivity({id:'payment-camp',kind:'camp',published:true,title:'Payment camp',capacity:20,tentsEnabled:true,registrationTestMode:true,requireReceipt:true,fees:10,startInstructions:'BEFORE',afterRegistrationInstructions:'PAYMENT',approvedInstructions:'APPROVED ONLY'});
+const user={id:'parent-one',name:'Parent'},d={gender:'male',tentNumber:'0'};
+const record=shared.submitRegistration(a,user,d,[],true).record;
+assert.equal(shared.registrationStatusLabel(record),'بانتظار الدفع');
+assert.equal(shared.registrationInstructions(a,record),'PAYMENT');
+assert.ok(shared.changeRegistrationStatus([record],record.id,'Confirmed',[a]).error);
+let result=shared.saveReceipt([record],record.id,user,demoImage(),'PAY-001');assert.equal(result.records[0].receiptStatus,'pendingReview');
+assert.equal(shared.registrationStatusLabel(result.records[0]),'الوصل قيد المراجعة');
+let rejected=shared.reviewReceipt(result.records,record.id,'rejected').records[0];assert.equal(shared.registrationStatusLabel(rejected),'بانتظار الدفع');
+assert.equal(shared.registrationInstructions(a,rejected),'PAYMENT');
+result=shared.reviewReceipt(result.records,record.id,'accepted');result=shared.changeRegistrationStatus(result.records,record.id,'Confirmed',[a]);
+assert.equal(shared.registrationStatusLabel(result.records[0]),'تمت الموافقة');assert.equal(shared.registrationInstructions(a,result.records[0]),'APPROVED ONLY');
+const waiting=shared.submitRegistration({...a,registrationMode:'waitingList'},user,{gender:'male',tentNumber:'waitingList'},[],true).record;
+assert.equal(shared.registrationInstructions(a,waiting),'');assert.equal(shared.registrationStatusLabel(waiting),'قائمة الانتظار');
+const content=publicContent({...shared.defaultContent,activities:[a]});assert.equal(content.activities[0].approvedInstructions,undefined);assert.equal(content.activities[0].afterRegistrationInstructions,'PAYMENT');
+console.log('PASS: awaiting payment → receipt review → approval, receipt rejection, waiting-list separation, approved-only instructions excluded from public content');
+
+assert.equal(sameOrigin(new Request('http://0.0.0.0:3052/api/registrations/session',{headers:{host:'localhost:3052',origin:'http://localhost:3052'}})),true);
+assert.equal(sameOrigin(new Request('http://internal/api/registrations',{headers:{host:'sparkyouth.vercel.app','x-forwarded-proto':'https',origin:'https://sparkyouth.vercel.app'}})),true);
+assert.equal(sameOrigin(new Request('http://internal/api/registrations',{headers:{host:'sparkyouth.vercel.app','x-forwarded-proto':'https',origin:'https://unrelated.example'}})),false);
+console.log('PASS: forwarded HTTPS and local host binding preserve same-origin protection');
