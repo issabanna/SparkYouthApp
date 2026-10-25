@@ -27,3 +27,11 @@ export async function registrationRequest(body){
  const value=await token();if(!value)return {shared:false};
  return request('/api/registrations',{method:body?'POST':'GET',headers:{Authorization:'Bearer '+value,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
 }
+
+export async function leaderRequest(body){const value=await token();if(!value)throw Error('خدمة المرشدين تحتاج اتصالًا بالخادم.');return request('/api/leaders',{method:body?'POST':'GET',headers:{Authorization:'Bearer '+value,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});}
+
+export async function accountRequest(body){const value=await token();if(!value)throw Error('خدمة الحساب تحتاج اتصالًا بالخادم.');return request('/api/account',{method:body?'POST':'GET',headers:{Authorization:'Bearer '+value,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});}
+export async function busRequest(body,activityId){const value=await token();if(!value)throw Error('خدمة الحافلات تحتاج اتصالًا بالخادم.');return request('/api/bus'+(activityId?'?activity='+encodeURIComponent(activityId):''),{method:body?'POST':'GET',headers:{Authorization:'Bearer '+value,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});}
+
+export async function evaluationRequest(activity,section,body){const value=await token();if(!value)throw Error('التقييم يحتاج اتصالًا بالخادم.');return request('/api/leader-evaluations'+(!body?'?activity='+encodeURIComponent(activity)+'&section='+encodeURIComponent(section):''),{method:body?'POST':'GET',headers:{Authorization:'Bearer '+value,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify({...body,activityId:activity,section})}:{})});}
+export async function leaderPersonRequest(activity,section,id){const value=await token();if(!value)throw Error('يلزم الاتصال بالخادم.');return request('/api/leader-person?'+new URLSearchParams({activity,section,id}),{headers:{Authorization:'Bearer '+value}});}

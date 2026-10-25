@@ -1189,7 +1189,7 @@ export default function Registrations({ content, user, onDone }) {
                   <View style={s.qr}>
                     <QRCode
                       value={JSON.stringify({
-                        type: "spark-preview",
+                        type: "spark-registration",
                         registration: r.id,
                         activity: r.activityId,
                       })}
@@ -1204,11 +1204,11 @@ export default function Registrations({ content, user, onDone }) {
                   )}
                   <Text style={s.info}>
                     {registrationInstructions(activities.find((a) => a.id === r.activityId),r) ||
-                      "أبرز البطاقة عند الوصول بعد تفعيل نظام التحقق."}
+                      "أبرز البطاقة لمسؤول الحافلة للتحقق من التسجيل."}
                   </Text>
                   <Text style={s.note}>
-                    QR تجريبي؛ لا يحتوي رقم الهوية أو المعلومات الطبية، ولا يعمل
-                    كتذكرة موثقة دون نظام تحقق خلفي.
+                    رمز QR للتحقق من التسجيل؛ لا يحتوي رقم الهوية أو المعلومات الطبية.
+
                   </Text>
                 </>
               );

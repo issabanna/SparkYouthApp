@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import EvaluationReports from "./EvaluationReports";
+import BusAdmin from "./BusAdmin";
+import LeaderAdmin, {LinkEditor} from "./LeaderAdmin";
 import {prepareImage, imageData} from "../lib/prepare-image";
 import {
   reviewReceipt,
@@ -28,6 +31,9 @@ const sections = [
   ["announcements", "إعلانات الصفحة الرئيسية"],
   ["activities", "المخيمات والأنشطة"],
   ["registrations", "طلبات التسجيل"],
+  ["leaders", "طلبات المرشدين والتكليفات"],
+  ["bus", "مسؤولو الحافلات"],
+  ["evaluations", "تقارير التقييمات"],
   ["galleries", "ألبومات الصور"],
   ["journeys", "مسارات التعلّم"],
   ["comments", "تعليقات المسارات"],
@@ -521,8 +527,11 @@ export default function Dashboard() {
             {message}
           </p>
         )}
-        {section === "parameters" ? (
+        {section === "evaluations" ? (<EvaluationReports activities={content.activities} cloud={cloud}/>) : section === "bus" ? (<BusAdmin cloud={cloud} activities={content.activities}/>) : section === "leaders" ? (<LeaderAdmin activities={content.activities} cloud={cloud}/>) : section === "parameters" ? (
             <section className="panel editor">
+              <h2>إعدادات الحساب والمرشدين</h2>
+              <LinkEditor title="روابط عامة للمرشدين المعتمدين" value={content.leaderSettings?.generalLinks||[]} onChange={generalLinks=>persist({...content,leaderSettings:{...content.leaderSettings,generalLinks}})}/>
+              {[["privacyText","سياسة الخصوصية"],["contactText","تواصل معنا"]].map(([key,label])=><label key={key}>{label}<textarea value={content.accountSettings?.[key]||''} onChange={e=>persist({...content,accountSettings:{...content.accountSettings,[key]:e.target.value}})}/></label>)}
               <h2>خيارات التسجيل المشتركة لجميع المخيمات</h2>
               <p>تعديل هذه القوائم يطبّق على جميع المخيمات. خيار واحد في كل سطر؛ اترك المدن والمدارس فارغة للسماح بالكتابة الحرة.</p>
               {[["cityOptions", "خيارات المدن"], ["schoolOptions", "خيارات المدارس"], ["shirtOptions", "مقاسات التيشيرت"]].map(([key, label]) => (
@@ -728,8 +737,8 @@ export default function Dashboard() {
                 <details>
                   <summary>سجل إجراءات الطلب ({r.auditLog?.length||0})</summary>
                   {r.auditLog?.length ? <ol>{r.auditLog.map(entry=><li key={entry.id}>
-                    <strong>{({submitted:'إرسال الطلب',receipt_uploaded:'رفع وصل الدفع',cancelled:'إلغاء الطلب',receipt_accepted_and_approved:'قبول الوصل واعتماد الطلب',receipt_rejected:'طلب تصحيح الوصل',seat_allocated_payment_requested:'تخصيص مقعد وطلب الدفع',approved:'اعتماد الطلب',rejected:'رفض الطلب',approved_without_receipt:'تأكيد الطلب بدون وصل',edited:'تعديل بيانات الطلب'})[entry.action]||entry.action}</strong>
-                    <p>{new Date(entry.at).toLocaleString('ar-JO',{timeZone:'Asia/Amman'})} · {entry.actor?.type==='admin'?`الإدارة · الجلسة ${entry.actor.session}`:'المسجّل'}</p>
+                    <strong>{({submitted:'إرسال الطلب',receipt_uploaded:'رفع وصل الدفع',cancelled:'إلغاء الطلب',receipt_accepted_and_approved:'قبول الوصل واعتماد الطلب',receipt_rejected:'طلب تصحيح الوصل',seat_allocated_payment_requested:'تخصيص مقعد وطلب الدفع',approved:'اعتماد الطلب',rejected:'رفض الطلب',approved_without_receipt:'تأكيد الطلب بدون وصل',edited:'تعديل بيانات الطلب',bus_boarded:'تسجيل الصعود للحافلة'})[entry.action]||entry.action}</strong>
+                    <p>{new Date(entry.at).toLocaleString('ar-JO',{timeZone:'Asia/Amman'})} · {entry.actor?.type==='admin'?`الإدارة · الجلسة ${entry.actor.session}`:entry.actor?.type==='busAdmin'?`مسؤول الحافلة · الجلسة ${entry.actor.session}`:'المسجّل'}</p>
                     <p>{entry.fromLabel||(entry.fromStatus?registrationStatusLabel({status:entry.fromStatus,receiptStatus:entry.fromReceiptStatus}):'طلب جديد')} ← {entry.toLabel||registrationStatusLabel({status:entry.toStatus,receiptStatus:entry.toReceiptStatus})}</p>
                     {entry.fromTent!==entry.toTent && <p>الخيمة: {entry.fromTent??'بدون'} ← {entry.toTent??'بدون'}</p>}
                     {entry.changes && <ul>{Object.entries(entry.changes).map(([key,change])=><li key={key}>{registrationEditableFields[key]||(key==='age'?'العمر':key)}: {String(change.before??'—')} ← {String(change.after??'—')}</li>)}</ul>}
@@ -936,6 +945,8 @@ export default function Dashboard() {
                     </div>)}
                   </div>
                 </>}
+                {section === "activities" && <fieldset><legend>صفحة النشاط للمرشدين</legend><label>عن المخيم / النشاط<textarea value={draft.leaderAbout||''} onChange={e=>setDraft({...draft,leaderAbout:e.target.value})}/></label><label>رفع صورة الفريق<input type="file" accept="image/*" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;setBusy(true);try{const result=await storePhoto(file);setDraft(current=>({...current,leaderTeamImage:result}));setMessage('تم رفع صورة الفريق. احفظ النشاط ثم انشر المحتوى.')}catch(error){setMessage(error.message)}finally{setBusy(false)}}}/></label>{draft.leaderTeamImage&&<><img src={draft.leaderTeamImage} alt="فريق المخيم" style={{width:'100%',maxHeight:220,objectFit:'contain'}}/><button type="button" onClick={()=>setDraft({...draft,leaderTeamImage:''})}>إزالة صورة الفريق</button></>}</fieldset>}
+                {section === "activities" && (<LinkEditor title="روابط هذا النشاط للمرشدين المكلفين فقط" value={draft.leaderLinks||[]} onChange={leaderLinks=>setDraft({...draft,leaderLinks})}/>)}
                 {section === "activities" && (
                   <>
                     <label className="checkbox">

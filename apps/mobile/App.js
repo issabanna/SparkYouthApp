@@ -24,6 +24,9 @@ import {
 import CampPoster from "./CampPoster";
 import MediaImage from "./MediaImage";
 import Registrations from "./Registrations";
+import Account from "./Account";
+import AccountIdentity from "./AccountIdentity";
+import {accountRequest} from "./registration-client";
 import {
   normalizeContent,
   contentVersion,
@@ -185,11 +188,10 @@ export default function App() {
       completed: [],
     }),
   );
+  useEffect(()=>{accountRequest().then(({account})=>{if(account)setProfile(p=>({...p,account}))}).catch(()=>{});},[]);
   const [tab, setTab] = useState(ar.home),
     [slide, setSlide] = useState(0),
     [selected, setSelected] = useState(null),
-    [name, setName] = useState(""),
-    [role, setRole] = useState("camper"),
     [reflection, setReflection] = useState(""),
     [comment, setComment] = useState(""),
     [notice, setNotice] = useState("");
@@ -213,7 +215,7 @@ export default function App() {
     setProfile(next);
     save(sessionKey, next);
   };
-  const user = profile.user;
+  const user = profile.user ? {...profile.user,role:"camper"} : null;
   const announcements = content.announcements.filter((x) => x.published),
     journeys = content.journeys.filter((j) => canAccessJourney(j, user));
   const ranking = [
@@ -331,49 +333,8 @@ export default function App() {
             أخبار مخيمك، لحظاتنا الجميلة، ومسارات تعلّم قصيرة نتعلّم فيها معًا.
             ادخل لاستكشاف مجتمع سبارك.
           </Text>
-          <Text style={s.label}>اسمك في المعاينة</Text>
-          <TextInput
-            accessibilityLabel="اسمك في المعاينة"
-            placeholder="كيف نناديك؟"
-            value={name}
-            onChangeText={setName}
-            maxLength={50}
-            style={s.input}
-          />
-          <Text style={s.label}>جرّب نوع الحساب</Text>
-          <View style={s.roles}>
-            {[
-              ["camper", "مشارك"],
-              ["pendingLeader", "مرشد بانتظار الموافقة"],
-              ["approvedLeader", "مرشد معتمد"],
-            ].map(([id, label]) => (
-              <Pressable
-                key={id}
-                onPress={() => setRole(id)}
-                style={[s.role, role === id && s.roleActive]}
-                accessibilityRole="button"
-              >
-                <Text style={s.small}>{label}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Button
-            disabled={!name.trim()}
-            onPress={() =>
-              updateProfile({
-                ...profile,
-                user: {
-                  name: name.trim(),
-                  role,
-                },
-              })
-            }
-          >
-            دخول تجريبي ←
-          </Button>
-          <Text style={s.caption}>
-            اختيار الدور هنا للعرض فقط، وليس تسجيل دخول أو اعتمادًا فعليًا.
-          </Text>
+          <AccountIdentity initial={profile.account?.details} cityOptions={content.registrationOptions?.cityOptions||[]} onSaved={account=>updateProfile({...profile,account,user:{name:account.details.englishFirstName,role:'camper'}})}/>
+          <Text style={s.caption}>حساب موحّد للمشاركين والمرشدين. يُحفظ الوصول في هذا المتصفح أو الجهاز حاليًا.</Text>
         </ScrollView>
       ) : (
         <>
@@ -785,55 +746,7 @@ export default function App() {
                 </Text>
               </>
             )}
-            {tab === ar.account && (
-              <>
-                <View style={s.identityCard}>
-                  <View style={s.identityIcon}>
-                    <Icon name="person" size={38} />
-                  </View>
-                  <Text style={s.identityName}>{user.name}</Text>
-                  <Text style={s.identityRole}>
-                    {user.role === "approvedLeader"
-                      ? "مرشد معتمد"
-                      : user.role === "pendingLeader"
-                        ? "مرشد بانتظار الموافقة"
-                        : "مشارك في مجتمع سبارك"}
-                  </Text>
-                  <View style={s.identityStats}>
-                    <Text style={s.identityStat}>
-                      {completed} مسارات مكتملة
-                    </Text>
-                    <Icon name="sparkles" color="#ffda00" size={18} />
-                    <Text style={s.identityStat}>{progress}% تقدّم</Text>
-                  </View>
-                </View>
-                <View style={s.cardContent}>
-                  <Text style={s.title}>معًا نصنع مخيمًا أجمل</Text>
-                  <Text style={s.body}>
-                    تعلّم وشارك باحترام. تعليقات المسارات تظهر للمسموح لهم
-                    بقراءة المسار؛ تأمّلك الشخصي منفصل عنها.
-                  </Text>
-                  <Text style={s.info}>
-                    في المعاينة: التأملات والتعليقات محلية. تسجيل الدخول الحقيقي
-                    وحماية بياناتك سيُربطان بالخادم.
-                  </Text>
-                </View>
-                <Button
-                  secondary
-                  onPress={() => {
-                    setSelected(null);
-                    updateProfile({
-                      ...profile,
-                      user: null,
-                      completed: [],
-                      reflections: {},
-                    });
-                  }}
-                >
-                  الخروج من المعاينة
-                </Button>
-              </>
-            )}
+            {tab === ar.account && <Account user={user} profile={profile} updateProfile={updateProfile} content={content} onNotifications={()=>setSelected({type:'announcements'})} onLogout={()=>{setSelected(null);updateProfile({...profile,user:null,completed:[],reflections:{}})}}/>}
           </ScrollView>
           <View style={s.tabDock}>
             <View style={s.tabs}>

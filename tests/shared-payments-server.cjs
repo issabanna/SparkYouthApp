@@ -51,8 +51,8 @@ const db=http.createServer(async(req,res)=>{try{
   browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
   const ownerContext=await browser.newContext({viewport:{width:390,height:844}}),page=await ownerContext.newPage(),browserErrors=[];
   debugPage=page;page.on('pageerror',e=>browserErrors.push(e.message));
-  await ownerContext.addInitScript(token=>localStorage.setItem('spark-registration-session-v1',token),owner.Authorization.slice(7));
-  await page.goto(base+'/app');await page.getByLabel('اسمك في المعاينة').fill('Parent');await page.getByRole('button',{name:'دخول تجريبي'}).click();
+  await ownerContext.addInitScript(token=>{localStorage.setItem('spark-registration-session-v1',token);localStorage.setItem('spark-camp-profile-v1',JSON.stringify({user:{name:'Parent',role:'camper'},completed:[],reflections:{}}))},owner.Authorization.slice(7));
+  await page.goto(base+'/app');
   await page.getByRole('tab',{name:'الأنشطة',exact:true}).click();await page.getByRole('button',{name:'تسجيلاتي',exact:true}).click();await page.getByText('بانتظار الدفع',{exact:true}).waitFor();
   await page.getByText('PAYMENT INSTRUCTIONS',{exact:true}).waitFor();assert.equal(await page.getByText('APPROVED SECRET',{exact:true}).count(),0);
   await page.getByRole('button',{name:'تحميل وصل الإيداع',exact:true}).click();await pickImage(page,'اختيار صورة الوصل');await page.getByLabel('الرقم المرجعي للوصل',{exact:true}).fill('PAY-BROWSER');await page.getByRole('button',{name:'تأكيد رفع الوصل',exact:true}).click();await page.getByText('الوصل قيد المراجعة',{exact:true}).waitFor();

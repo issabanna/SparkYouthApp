@@ -21,6 +21,7 @@ export function displayRegistration(record,admin=false){
 }
 
 export function registrationIndex(records,{page=1,query='',activity='',status=''}={}){
+ records=records.filter(r=>!r.activityId.startsWith('__'));
  const matches=records.filter(r=>(!activity||r.activityId===activity)&&(!status||r.status===status)&&(!query||[r.details.arabicFullName,r.details.englishFullName,r.details.firstName,r.details.lastName,r.reference].filter(Boolean).join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())));
  const pageSize=25,total=matches.length,current=Math.max(1,Math.min(Number(page)||1,Math.max(1,Math.ceil(total/pageSize))));
  return {page:current,total,pageSize,records:matches.slice((current-1)*pageSize,current*pageSize).map(r=>({id:r.id,activityId:r.activityId,activityTitle:r.activityTitle,status:r.status,receiptStatus:r.receiptStatus,paymentRequired:r.paymentRequired,details:{arabicFullName:r.details.arabicFullName,englishFullName:r.details.englishFullName,firstName:r.details.firstName,lastName:r.details.lastName}})),

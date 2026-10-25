@@ -9,7 +9,7 @@ export async function GET(request){
  try{
   const params=new URL(request.url).searchParams;
   if(params.get('id')){const row=await getRegistration(params.get('id'));return row?reply({record:displayRegistration({...row.record,hasReceipt:!!row.record.receipt?.uri,hasIdDocument:!!row.record.details?.idDocument?.uri},true)}):reply({error:'الطلب غير موجود.'},404);}
-  const records=await listRegistrations();
+  const records=(await listRegistrations()).filter(r=>!r.activityId.startsWith('__'));
   return reply(params.get('compact')==='true'?registrationIndex(records,{page:params.get('page'),query:(params.get('query')||'').slice(0,100),activity:params.get('activity')||'',status:params.get('status')||''}):{records:records.map(r=>displayRegistration(r,true))});
  }catch{return unavailable();}
 }
@@ -19,7 +19,7 @@ export async function POST(request){
  if(!actor)return reply({error:'تسجيل دخول الإدارة مطلوب.'},401);
  let body;try{body=await request.json();}catch{return reply({error:'طلب غير صالح.'},400);}
  try{
-  const row=await getRegistration(body.id);if(!row)return reply({error:'الطلب غير موجود.'},404);
+  const row=await getRegistration(body.id);if(!row||row.record.activityId.startsWith('__'))return reply({error:'الطلب غير موجود.'},404);
   const content=await registrationContent();
   const updated=await mutateRegistration(row.record.activityId,row.owner_hash,async records=>{
    const fresh=await getRegistration(body.id);if(!fresh)throw Error('الطلب غير موجود.');
@@ -44,6 +44,6 @@ export async function POST(request){
    return shared.appendRegistrationAction(result.records.find(r=>r.id===body.id),{action,actor,before:fresh.record,reason,changes:result.changes});
   });
   if(body.compact)return reply({record:displayRegistration({...updated,hasReceipt:!!updated.receipt?.uri,hasIdDocument:!!updated.details?.idDocument?.uri},true)});
-  return reply({records:(await listRegistrations()).map(r=>displayRegistration(r,true))});
+  return reply({records:(await listRegistrations()).filter(r=>!r.activityId.startsWith('__')).map(r=>displayRegistration(r,true))});
  }catch(error){if(error.code)return unavailable();return reply({error:error.message||'تعذّر تحديث الطلب.'},409);}
 }
