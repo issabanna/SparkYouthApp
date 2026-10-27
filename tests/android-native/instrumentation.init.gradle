@@ -1,0 +1,8 @@
+gradle.beforeProject { project ->
+    project.plugins.withId('com.android.application') {
+        project.android.defaultConfig.testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
+        project.android.testBuildType = 'release'
+        project.dependencies.add('androidTestImplementation', 'androidx.test:runner:1.6.2')
+        project.dependencies.add('androidTestImplementation', 'androidx.test.ext:junit:1.2.1')
+    }
+}

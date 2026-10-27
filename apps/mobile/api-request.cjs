@@ -8,11 +8,11 @@ function connectionError(error, timedOut, includeDiagnostic = false) {
   }
   const detail = details.join(' ');
   let code = 'E_NETWORK', message = 'تعذّر اتصال التطبيق بالخادم.';
-  if (timedOut || /timeout|timed out|aborted|canceled/i.test(detail)) {
+  if (timedOut || /timeout|timed[ _]out|aborted|canceled/i.test(detail)) {
     code = 'E_TIMEOUT'; message = 'انتهت مهلة اتصال التطبيق بالخادم.';
-  } else if (/ssl|certificate|certpath|trust anchor|handshake/i.test(detail)) {
+  } else if (/ssl|certificate|cert_|certpath|trust anchor|handshake/i.test(detail)) {
     code = 'E_TLS'; message = 'تعذّر التحقق من شهادة الاتصال الآمن في أندرويد.';
-  } else if (/connection reset|reset by peer/i.test(detail)) {
+  } else if (/connection[ _]reset|reset by peer/i.test(detail)) {
     code = 'E_RESET'; message = 'تم إغلاق اتصال التطبيق بالخادم قبل استلام الرد.';
   } else if (/resolve|unknownhost|name resolution|dns|hostname/i.test(detail)) {
     code = 'E_DNS'; message = 'تعذّر العثور على عنوان الخادم من التطبيق.';

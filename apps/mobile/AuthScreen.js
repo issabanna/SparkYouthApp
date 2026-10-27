@@ -57,9 +57,9 @@ export default function AuthScreen({
       setMessage('');
       try {
         const result = await apiRequest('/api/auth', { credentials: 'omit' });
-        setMessage(result.configured ? 'الاتصال بالخادم ناجح. جرّب تسجيل الدخول مجددًا. (Android 0.1.7 · HTTP/1.1)' : 'خدمة الحسابات غير جاهزة. (Android 0.1.7 · HTTP/1.1)');
+        setMessage(result.configured ? 'الاتصال بالخادم ناجح. جرّب تسجيل الدخول مجددًا. (Android 0.1.8 · Cronet)' : 'خدمة الحسابات غير جاهزة. (Android 0.1.8 · Cronet)');
       } catch (e) {
-        setMessage(`فحص الاتصال: ${e.message}${e.diagnostic ? '\n' + e.diagnostic : ''} — Android 0.1.7 · HTTP/1.1`);
+        setMessage(`فحص الاتصال: ${e.message}${e.diagnostic ? '\n' + e.diagnostic : ''} — Android 0.1.8 · Cronet`);
       } finally { setBusy(false); }
     }}>فحص اتصال التطبيق</Button>}<Button disabled={busy || !email.trim() || !password} onPress={submit}>{busy ? 'جارٍ المتابعة…' : mode === 'login' ? 'دخول' : 'إنشاء الحساب'}</Button><Button secondary disabled={busy} onPress={() => {
       setMode(mode === 'login' ? 'signup' : 'login');

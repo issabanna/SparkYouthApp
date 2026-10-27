@@ -1,29 +1,26 @@
 # Native Android connection recovery
 
-## Confirmed findings
+The affected phone authenticates in Android Chrome, but native 0.1.7 fails even on the public `/api/auth` GET with `java.net.SocketException: Connection reset`. React Native fetch, Expo fetch and an HTTP/1.1-only OkHttp configuration encountered the reset. The resetting component was not identified; HTTP/2 was not established as the cause.
 
-The affected phone can authenticate in Android Chrome, but native release 0.1.7 fails even on the credential-free `/api/auth` GET. The diagnostic is `java.net.SocketException: Connection reset`. Both React Native fetch and Expo fetch encountered the reset. Forcing HTTP/1.1 did not resolve it. This does not identify the resetting component or establish a TLS/certificate, DNS or HTTP/2 cause.
+The user requires native screens across the supported Android range. The attempted browser shell was discarded without publishing. Version 0.1.8 remains React Native with an embedded Hermes bundle and ReactActivity.
 
-The separate status-message crash was traced to Android rejecting `accessibilityRole="status"` and corrected with the supported `role="status"` prop in 0.1.6. This fix passed the source-contract regression check against installed Android native role enums; affected-phone confirmation showed the result rendered successfully.
+## Implemented transport
 
-The attempted browser-shell approach was rejected by the user. It was discarded without committing or publishing. The current native activity is ReactActivity, the application is MainApplication, and the shipped build remains native 0.1.7 (code 8).
+A tracked Expo plugin installs Google's Cronet OkHttp adapter `0.1.2` with bundled Cronet `500.1.0` (native engine `155.0.8059.16`) before React Native initializes. Both dependencies were pinned from Google's Maven metadata. The bundled provider supports API 24+, works without Google Play Services and includes ARM32/ARM64 libraries. Requests use the maintained native transport rather than WebView or an Android 14-only API.
 
-## Next native approach
+The factory is shared by native networking clients. Its interceptor is initialized lazily on request threads, has bounded call/read/write timeouts, rejects insecure release URLs and redirects, retains certificate verification and does not add application-level mutation retries. Native initialization failures are converted to request errors. ACCESS_NETWORK_STATE is declared as a normal permission required by Cronet. No credentials or service keys were added to the APK.
 
-Evaluate Google's maintained Cronet Transport for OkHttp with an embedded Cronet provider, retaining React Native UI and the authenticated API contract. A bundled provider is needed to support devices without Google Play Services; avoid relying solely on Android 14's platform HttpEngine. Pin a currently supported compatible Cronet version after reading official Maven metadata and checking minimum SDK/ABI requirements.
+The adapter bypasses OkHttp core/network interceptors, cookies and cache. Spark's native authenticated APIs use bearer headers; admin browser-cookie authentication is unchanged. API URLs are final HTTPS endpoints. Development HTTP requests use ordinary OkHttp only in debug builds. Cronet-style reset/certificate/timeout errors are mapped to the existing diagnostic categories. Detailed errors remain limited to the credential-free public connection check.
 
-The official integration reference is https://github.com/google/cronet-transport-for-okhttp at reviewed commit `84a5424e04b47a6f257db032b6a7c2ce6183080f`. Its sample uses `com.google.net.cronet:cronet-okhttp:0.1.1` and minimum SDK 24, matching Spark's existing Android 7.0 minimum. The application interceptor must be last; it bypasses OkHttp core/network interceptors, caches, cookies, authentication and retries, and cancellation has propagation limitations. Review these implications against Expo fetch, public-content requests, image fetching and bearer-token APIs before adopting it. Do not write a custom TLS trust manager or bypass certificate validation.
+The login form's ScrollView now lets buttons handle taps while an input is focused, avoiding a swallowed first tap when the keyboard closes. The prior Android status-message crash remains fixed with the supported role prop.
 
-## Build prerequisite
+## Evidence and limits
 
-The running environment explicitly denied `dl.google.com` and `repo.maven.apache.org`. A saved environment network draft adds those two destinations while preserving existing allowed domains. The environment tool returned `requires_publish: true`; saving the draft does not apply it. After the user saves/publishes the settings, retry downloads through the inherited proxy with certificate verification enabled. Google hosts Android SDK/emulator downloads as well as Google Maven dependencies.
+- API 24 emulator: five native instrumentation checks passed against the live API (native provider, authentication GET, login POST/UTF-8 validation, unauthorized-account rejection and cancellation).
+- API 24 native UI: the real native login inputs submitted through Expo fetch and rendered the expected Arabic API validation message. The connection-check button rendered its successful status without crashing. These checks created no live account and did not use the user's password.
+- Real signup/login, automatic confirmation, refresh, stable account ownership, password changes and logout passed the existing local Supabase fixture/browser regression suite. This does not equal a successful live-user login on the affected phone.
+- Clean ARM release: package/version/signature, embedded bundle, permissions, ARM32/ARM64 Cronet libraries and 16 KB ELF alignment for every ARM64 library verified. The final production-style preview excludes all emulator proxy trust fixtures.
+- API 36 emulator: its first boot/system services repeatedly failed before the app could install. No Android 16 app-runtime success is claimed. The build targets API 36; target SDK and static packaging checks are distinct from runtime testing.
+- The original phone's successful login remains pending. This is a signed preview for device testing, not a declaration that every Android device or the full app is ready for store release.
 
-## Acceptance before another user build
-
-- Restore/reuse the current native activity and preserve the preview signing key.
-- Resolve, pin and compile the maintained transport and provider, with the supported SDK and ARM ABI range unchanged.
-- Exercise real native request/response handling, authentication errors, refresh, sign-out, timeout/cancellation and upload semantics across representative supported Android versions, including the oldest supported API. Browser tests alone do not exercise the native transport.
-- Verify the signed artifact's version, launcher, permissions and native library ABIs, and verify downloaded published bytes.
-- Keep successful build/emulator checks distinct from successful login on the originally affected physical device. Do not call the connection failure resolved or the APK ready for public release while those outcomes remain unverified.
-
-No compatible Cronet replacement has been compiled or tested yet. No replacement APK was published for this proposed approach.
+See `tests/android-native/README.md` for the native checks and the distinction between the temporary proxy QA build and the downloadable preview.

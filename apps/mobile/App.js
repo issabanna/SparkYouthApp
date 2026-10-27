@@ -352,13 +352,13 @@ export default function App() {
         </Pressable>
       </View>
       {!user ? (
-        <ScrollView contentContainerStyle={s.content}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
           {authChecking?<Text style={s.body}>جارٍ التحقق من الحساب…</Text>:authError?<><Text accessibilityRole="alert" style={s.body}>{authError}</Text><Button onPress={restoreSession}>إعادة المحاولة</Button></>:!authUser?<AuthScreen onAuthenticated={loadAuthenticatedUser}/>:<AccountIdentity cityOptions={content.registrationOptions?.cityOptions||[]} onSaved={account=>updateProfile({...profile,account})}/>}
 
         </ScrollView>
       ) : (
         <>
-          <ScrollView ref={scrollRef} contentContainerStyle={s.content}>
+          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
             {tab === ar.home && (
               <>
                 <View style={s.welcomeRow}>
@@ -809,7 +809,7 @@ export default function App() {
               إغلاق ×
             </Button>
           </View>
-          <ScrollView contentContainerStyle={s.content}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
             {selected?.type === "announcements" && (
               <>
                 <Text style={s.heroTitle}>إعلانات سبارك</Text>
