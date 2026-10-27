@@ -1,0 +1,31 @@
+{
+  "version": "0.1.7",
+  "package": "app.sparkyouth.mobile",
+  "versionCode": 8,
+  "minimumAndroid": "7.0",
+  "architectures": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "bytes": 24255124,
+  "sha256": "02ff91620d7b40f6b5c10eba6abfaea7170896c653992ff2e063bb66ab83c37b",
+  "sourceCommit": "fcd9fe262cca2526e8c80b56771c728d968a95a8",
+  "signing": "Same Android preview signing certificate as 0.1.6",
+  "signingCertificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+  "deviceTested": false,
+  "embeddedHermesBundle": true,
+  "realUserLogin": true,
+  "automaticNewAccountConfirmation": true,
+  "leaderApplications": true,
+  "sharedRegistrationBackend": true,
+  "nativeCameraQrScanning": false,
+  "webCameraQrScanning": true,
+  "nativeDropdownStyling": true,
+  "nativeApiTransport": "expo/fetch",
+  "nativeConnectionDiagnostics": true,
+  "reportedDeviceLoginVerified": false,
+  "androidStatusRoleCrashFixed": true,
+  "androidHttpProtocol": "HTTP/1.1",
+  "platformTlsVerification": true,
+  "automaticConnectionRetries": false
+}
