@@ -1,0 +1,27 @@
+const assert = require('node:assert/strict');
+const { createApiRequest, connectionError } = require('../apps/mobile/api-request.cjs');
+(async () => {
+  const secret = 'test-only-not-a-real-password';
+  let calls = 0;
+  const request = createApiRequest(async (url, init) => {
+    calls++;
+    assert.equal(url, 'https://example.test/api/auth');
+    assert.equal(JSON.parse(init.body).password, secret);
+    throw Error('Unable to resolve host example.test');
+  }, 'https://example.test');
+  await assert.rejects(request('/api/auth', { method: 'POST', body: JSON.stringify({ password: secret }) }), e => e.code === 'E_DNS' && !e.message.includes(secret));
+  assert.equal(calls, 1, 'Failed writes must not be retried');
+  assert.equal(connectionError(Error('SSLHandshakeException: Trust anchor not found')).code, 'E_TLS');
+  assert.equal(connectionError(Error('connection reset')).code, 'E_NETWORK');
+  const apiFailure = createApiRequest(async () => ({ ok: false, status: 401, json: async () => ({error: 'Wrong password'}) }), '');
+  await assert.rejects(apiFailure('/api/auth'), e => e.status === 401 && e.message === 'Wrong password' && !e.code);
+  const htmlFailure = createApiRequest(async () => ({ ok: false, status: 502, json: async () => { throw SyntaxError('html'); } }), '');
+  await assert.rejects(htmlFailure('/api/auth'), e => e.code === 'E_RESPONSE' && e.message.includes('502'));
+  const timeout = createApiRequest((url, {signal}) => new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(Error('Canceled')))), '', 5);
+  await assert.rejects(timeout('/api/auth'), e => e.code === 'E_TIMEOUT');
+  const bodyTimeout = createApiRequest(async (url, {signal}) => ({ok: true, status: 200, json: () => new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(Error('Canceled'))))}), '', 5);
+  await assert.rejects(bodyTimeout('/api/auth'), e => e.code === 'E_TIMEOUT');
+  const success = createApiRequest(async () => ({ok: true, json: async () => ({session: {access_token: 'test'}})}), '');
+  assert.equal((await success('/api/auth')).session.access_token, 'test');
+  console.log('PASS mobile network transport, errors, timeout, auth rejection and no mutation retry');
+})().catch(e => { console.error(e); process.exitCode = 1; });

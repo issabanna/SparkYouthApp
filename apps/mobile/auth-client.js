@@ -1,30 +1,15 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { fetch as expoFetch } from 'expo/fetch';
+import api from './api-request.cjs';
 const key = 'spark-auth-session-v1',
   legacyKey = 'spark-registration-session-v1';
 const origin = Platform.OS === 'web' ? '' : 'https://sparkyouth.vercel.app';
 let session, loading, refreshing;
 const listeners = new Set();
-export async function apiRequest(path, options = {}) {
-  const controller = new AbortController(),
-    timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const response = await fetch(origin + path, {
-      cache: 'no-store',
-      ...options,
-      signal: controller.signal
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      const error = Error(result.error || 'تعذّر الاتصال بالخادم.');
-      error.status = response.status;
-      throw error;
-    }
-    return result;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+export const apiRequest = api.createApiRequest(
+  Platform.OS === 'web' ? (...args) => fetch(...args) : expoFetch, origin
+);
 async function load() {
   if (session !== undefined) return session;
   if (!loading) loading = (async () => {

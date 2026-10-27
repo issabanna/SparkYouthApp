@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { signIn, signUp, changePassword } from './auth-client';
+import { View, Text, TextInput, Pressable, StyleSheet, Platform } from 'react-native';
+import { signIn, signUp, changePassword, apiRequest } from './auth-client';
 const Button = ({
   children,
   onPress,
@@ -52,7 +52,16 @@ export default function AuthScreen({
       setBusy(false);
     }
   };
-  return <View style={s.card}><Text style={s.title}>{mode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}</Text><Text style={s.label}>البريد الإلكتروني</Text><TextInput accessibilityLabel="البريد الإلكتروني" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" maxLength={254} style={s.input} /><Text style={s.label}>كلمة السر</Text><TextInput accessibilityLabel="كلمة السر" value={password} onChangeText={setPassword} secureTextEntry autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} maxLength={128} style={s.input} />{mode === 'signup' && <><Text style={s.label}>تأكيد كلمة السر</Text><TextInput accessibilityLabel="تأكيد كلمة السر" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" maxLength={128} style={s.input} /><Text style={s.text}>8 أحرف على الأقل.</Text></>}{!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}{!!message && <Text accessibilityRole="status" style={s.text}>{message}</Text>}<Button disabled={busy || !email.trim() || !password} onPress={submit}>{busy ? 'جارٍ المتابعة…' : mode === 'login' ? 'دخول' : 'إنشاء الحساب'}</Button><Button secondary disabled={busy} onPress={() => {
+  return <View style={s.card}><Text style={s.title}>{mode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}</Text><Text style={s.label}>البريد الإلكتروني</Text><TextInput accessibilityLabel="البريد الإلكتروني" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" maxLength={254} style={s.input} /><Text style={s.label}>كلمة السر</Text><TextInput accessibilityLabel="كلمة السر" value={password} onChangeText={setPassword} secureTextEntry autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} maxLength={128} style={s.input} />{mode === 'signup' && <><Text style={s.label}>تأكيد كلمة السر</Text><TextInput accessibilityLabel="تأكيد كلمة السر" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" maxLength={128} style={s.input} /><Text style={s.text}>8 أحرف على الأقل.</Text></>}{!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}{!!message && <Text accessibilityRole="status" style={s.text}>{message}</Text>}{Platform.OS !== 'web' && !!error && <Button secondary disabled={busy} onPress={async () => {
+      setBusy(true);
+      setMessage('');
+      try {
+        const result = await apiRequest('/api/auth');
+        setMessage(result.configured ? 'الاتصال بالخادم ناجح. جرّب تسجيل الدخول مجددًا. (Android 0.1.5)' : 'خدمة الحسابات غير جاهزة. (Android 0.1.5)');
+      } catch (e) {
+        setMessage(`فحص الاتصال: ${e.message} — Android 0.1.5`);
+      } finally { setBusy(false); }
+    }}>فحص اتصال التطبيق</Button>}<Button disabled={busy || !email.trim() || !password} onPress={submit}>{busy ? 'جارٍ المتابعة…' : mode === 'login' ? 'دخول' : 'إنشاء الحساب'}</Button><Button secondary disabled={busy} onPress={() => {
       setMode(mode === 'login' ? 'signup' : 'login');
       setPassword('');
       setConfirm('');

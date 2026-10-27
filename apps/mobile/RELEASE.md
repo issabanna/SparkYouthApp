@@ -23,3 +23,5 @@ From /workspace/SparkYouthApp/apps/mobile with an authenticated EAS CLI:
 For Android APK sharing without Play Console: `eas build --platform android --profile preview`. iOS internal distribution requires registered device provisioning; TestFlight is preferred for this request.
 
 The app uses real Supabase authentication and a private shared registration backend. Learning progress remains a local preview, and bus camera scanning currently uses the web version. Browser preview is at /app/ on the web deployment; it does not validate native behavior. Test actual builds before distributing them.
+
+0.1.5 / Android version code 6: native authenticated requests use Expo fetch with classified connection errors and a credential-free connection-check button on the login screen. Same preview signing key; installs over 0.1.4. Physical-device login verification is pending; do not treat successful packaging as proof that the reported connection failure is resolved.
