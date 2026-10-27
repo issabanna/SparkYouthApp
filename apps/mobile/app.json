@@ -2,7 +2,7 @@
   "expo": {
     "name": "Spark Youth",
     "slug": "spark-youth",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
@@ -10,7 +10,7 @@
     },
     "android": {
       "package": "app.sparkyouth.mobile",
-      "versionCode": 6
+      "versionCode": 7
     },
     "extra": {
       "supportsRTL": true

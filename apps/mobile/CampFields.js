@@ -134,7 +134,7 @@ export function CampExtra({
           accessibilityLabel="معاينة صورة الهوية"
         />
       )}
-      {details.idDocument?.aiCheck && <Text accessibilityRole="status" style={s.note}>
+      {details.idDocument?.aiCheck && <Text role="status" accessibilityLiveRegion="polite" style={s.note}>
         {details.idDocument.aiCheck.status === "checking" ? "جارٍ فحص الصورة…" : details.idDocument.aiCheck.message}
         {details.idDocument.aiCheck.status !== "checking" && !details.idDocument.aiCheck.accepted
           ? activity.idImageCheckPolicy === "reject" ? " يرجى إعادة اختيار صورة واجتياز الفحص للمتابعة." : " هذا تنبيه فقط؛ يمكنك المتابعة." : ""}

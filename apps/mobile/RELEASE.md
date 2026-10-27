@@ -25,3 +25,5 @@ For Android APK sharing without Play Console: `eas build --platform android --pr
 The app uses real Supabase authentication and a private shared registration backend. Learning progress remains a local preview, and bus camera scanning currently uses the web version. Browser preview is at /app/ on the web deployment; it does not validate native behavior. Test actual builds before distributing them.
 
 0.1.5 / Android version code 6: native authenticated requests use Expo fetch with classified connection errors and a credential-free connection-check button on the login screen. Same preview signing key; installs over 0.1.4. Physical-device login verification is pending; do not treat successful packaging as proof that the reported connection failure is resolved.
+
+0.1.6 / code 7: fix Android status-message accessibility crash, including connection-check results. Preserve status semantics with the supported role prop and polite announcements. Show native exception details only for the public credential-free status check. Original login connection failure still needs physical-device verification.

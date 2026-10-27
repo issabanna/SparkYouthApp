@@ -10,6 +10,11 @@ const { createApiRequest, connectionError } = require('../apps/mobile/api-reques
     throw Error('Unable to resolve host example.test');
   }, 'https://example.test');
   await assert.rejects(request('/api/auth', { method: 'POST', body: JSON.stringify({ password: secret }) }), e => e.code === 'E_DNS' && !e.message.includes(secret));
+  assert.equal(connectionError(Error(secret)).diagnostic, undefined);
+  const check = createApiRequest(async () => { throw Error('connection reset by peer'); }, '');
+  await assert.rejects(check('/api/auth', {credentials: 'omit'}), e => e.diagnostic === 'connection reset by peer');
+  await assert.rejects(check('/api/auth', {method: 'POST', body: secret, credentials: 'omit'}), e => !e.diagnostic);
+  await assert.rejects(check('/api/auth', {headers: {Authorization: 'Bearer secret'}, credentials: 'omit'}), e => !e.diagnostic);
   assert.equal(calls, 1, 'Failed writes must not be retried');
   assert.equal(connectionError(Error('SSLHandshakeException: Trust anchor not found')).code, 'E_TLS');
   assert.equal(connectionError(Error('connection reset')).code, 'E_NETWORK');

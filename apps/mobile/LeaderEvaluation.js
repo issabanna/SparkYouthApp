@@ -207,7 +207,7 @@ export default function LeaderEvaluation({
       }}>سيُتاح النموذج بعد اعتماد أسئلة التقييم.</Text>}</>}{!!error && <Text accessibilityRole="alert" style={{
       color: '#b32e20',
       textAlign: 'right'
-    }}>{error}</Text>}{!!message && <Text accessibilityRole="status" style={{
+    }}>{error}</Text>}{!!message && <Text role="status" accessibilityLiveRegion="polite" style={{
       color: '#217047',
       textAlign: 'right'
     }}>{message}</Text>}</View>;

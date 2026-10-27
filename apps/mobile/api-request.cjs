@@ -1,6 +1,12 @@
 // Never retry writes: a failed response does not prove a write was not saved.
-function connectionError(error, timedOut) {
-  const detail = [error?.message, error?.cause?.message].filter(Boolean).join(' ');
+function connectionError(error, timedOut, includeDiagnostic = false) {
+  const details = [];
+  let current = error;
+  for (let depth = 0; current && depth < 4; depth++, current = current.cause) {
+    if (current.message) details.push(String(current.message));
+    if (current.code) details.push(String(current.code));
+  }
+  const detail = details.join(' ');
   let code = 'E_NETWORK', message = 'تعذّر اتصال التطبيق بالخادم.';
   if (timedOut || /timeout|timed out|aborted|canceled/i.test(detail)) {
     code = 'E_TIMEOUT'; message = 'انتهت مهلة اتصال التطبيق بالخادم.';
@@ -11,6 +17,9 @@ function connectionError(error, timedOut) {
   }
   const result = Error(`${message} (${code})`);
   result.code = code;
+  // Only expose native exception details for the credential-free status check.
+  // Never attach request bodies, headers, tokens or login data.
+  if (includeDiagnostic) result.diagnostic = detail.slice(0, 1000);
   return result;
 }
 function createApiRequest(transport, origin, timeoutMs = 30000) {
@@ -24,7 +33,11 @@ function createApiRequest(transport, origin, timeoutMs = 30000) {
         response = await transport(origin + path, {
           cache: 'no-store', ...options, signal: controller.signal
         });
-      } catch (error) { throw connectionError(error, timedOut); }
+      } catch (error) {
+        const statusCheck = path === '/api/auth' && (!options.method || options.method === 'GET') &&
+          !options.body && !options.headers && options.credentials === 'omit';
+        throw connectionError(error, timedOut, statusCheck);
+      }
       let result;
       try { result = await response.json(); }
       catch (error) {

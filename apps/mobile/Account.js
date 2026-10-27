@@ -135,7 +135,7 @@ export default function Account({
  <Button onPress={() => setScreen('identity')}>معلومات الحساب</Button>
  <Button onPress={() => setScreen('password')}>تعديل كلمة السر</Button>
  <Button disabled={busy} onPress={changePhoto}>{busy?'جارٍ تحديث الصورة…':'تعديل صورة الحساب'}</Button>
- {!!photoMessage&&<Text accessibilityRole="status" style={s.text}>{photoMessage}</Text>}
+ {!!photoMessage&&<Text role="status" accessibilityLiveRegion="polite" style={s.text}>{photoMessage}</Text>}
  <Button onPress={onNotifications}>الإشعارات</Button>
  <Button onPress={() => setScreen('privacy')}>سياسة الخصوصية</Button>
  <Button onPress={() => setScreen('contact')}>تواصل معنا</Button>
