@@ -9,6 +9,8 @@ import BusApp from './BusApp';
 import LeaderEvaluation, { evaluationLabels } from './LeaderEvaluation';
 import { Picker } from './Picker';
 import MediaImage from './MediaImage';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import SafeScreen from './SafeScreen';
 const {
   leaderFields,
   leaderChoices,
@@ -24,6 +26,13 @@ const Button = ({
 }]}><Text style={[s.buttonText, orange && {
     color: '#fff'
   }]}>{children}</Text></Pressable>;
+const MenuRow = ({ label, icon, onPress, disabled, danger }) => <Pressable
+  accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress}
+  style={({pressed}) => [s.menuRow, pressed && s.menuPressed, disabled && {opacity: .5}]}>
+  <View style={[s.menuIcon, danger && s.dangerIcon]}><Ionicons name={icon} size={21} color={danger ? '#b43024' : '#706329'} /></View>
+  <Text style={[s.menuLabel, danger && {color: '#b43024'}]}>{label}</Text>
+  <Ionicons name="chevron-back" size={17} color="#aaa596" />
+</Pressable>;
 const empty = Object.fromEntries([...leaderFields.map(([k]) => [k, '']),['dob','']]);
 export default function Account({
   user,
@@ -123,22 +132,25 @@ export default function Account({
       if(uri)setPhotoMessage('تم تحديث صورة الحساب.');
     });
 
-  return <View style={s.account}><Text style={s.title}>حسابي</Text><View style={s.identity}><Pressable accessibilityRole="button" accessibilityLabel="تغيير صورة الملف الشخصي" disabled={busy} onPress={changePhoto}>{account?.photo || profile.photo ? <Image source={{
-        uri: account?.photo || profile.photo
-      }} style={s.avatar} /> : <View style={[s.avatar, {
-        backgroundColor: '#fff0df',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }]}><Text style={{
-          fontSize: 34
-        }}>☺</Text></View>}</Pressable><Text style={s.title}>{user.name}</Text></View>
- <Button onPress={() => setScreen('identity')}>معلومات الحساب</Button>
- <Button onPress={() => setScreen('password')}>تعديل كلمة السر</Button>
- <Button disabled={busy} onPress={changePhoto}>{busy?'جارٍ تحديث الصورة…':'تعديل صورة الحساب'}</Button>
- {!!photoMessage&&<Text role="status" accessibilityLiveRegion="polite" style={s.text}>{photoMessage}</Text>}
- <Button onPress={onNotifications}>الإشعارات</Button>
- <Button onPress={() => setScreen('privacy')}>سياسة الخصوصية</Button>
- <Button onPress={() => setScreen('contact')}>تواصل معنا</Button>
+  return <View style={s.account}><Text style={s.title}>حسابي</Text>
+ <View style={s.identity}>
+  <Pressable accessibilityRole="button" accessibilityLabel="تغيير صورة الملف الشخصي" disabled={busy} onPress={changePhoto} style={s.avatarWrap}>
+   {account?.photo || profile.photo ? <Image source={{uri: account?.photo || profile.photo}} style={s.avatar} /> : <View style={[s.avatar, s.avatarPlaceholder]}><Ionicons name="person-outline" size={34} color="#8c792c" /></View>}
+   <View style={s.cameraBadge}><Ionicons name="camera" size={14} color="#fff" /></View>
+  </Pressable>
+  <View style={s.identityCopy}><Text style={s.profileName}>{user.name}</Text><Text style={s.profileHint}>مساحتك الشخصية في سبارك</Text>
+   {data && <Text style={s.statusBadge}>{approved ? 'مرشد معتمد' : pending ? 'طلب الإرشاد قيد المراجعة' : 'حساب سبارك'}</Text>}
+  </View>
+ </View>
+ <Text style={s.groupLabel}>إعدادات الحساب</Text>
+ <View style={s.menuGroup}>
+  <MenuRow icon="person-outline" label="معلومات الحساب" onPress={() => setScreen('identity')} />
+  <MenuRow icon="lock-closed-outline" label="تعديل كلمة السر" onPress={() => setScreen('password')} />
+  <MenuRow icon="camera-outline" label={busy ? 'جارٍ تحديث الصورة…' : 'تعديل صورة الحساب'} disabled={busy} onPress={changePhoto} />
+  <MenuRow icon="notifications-outline" label="الإشعارات" onPress={onNotifications} />
+ </View>
+ {!!photoMessage && <Text role="status" accessibilityLiveRegion="polite" style={s.text}>{photoMessage}</Text>}
+ <Text style={s.groupLabel}>الإرشاد والمخيمات</Text>
  <Button orange disabled={loading || busy} onPress={() => {
       if (!data) {
         refresh();
@@ -161,15 +173,20 @@ export default function Account({
     }}>{loading ? 'جارٍ تحميل حالة الإرشاد…' : approved ? 'بوابة المرشدين' : pending ? 'طلب الإرشاد بانتظار الموافقة' : application?.status === 'LeaderRejected' ? 'إعادة تقديم طلب الإرشاد' : 'التسجيل كمرشد'}</Button>
  {!!data?.busActivities?.length && <><View style={{
         height: 18
-      }} /><Button onPress={() => setScreen('bus')}>Bus App</Button></>}
+      }} /><MenuRow icon="bus-outline" label="Bus App" onPress={() => setScreen('bus')} /></>}
  {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
- <Button onPress={onLogout}>تسجيل الخروج</Button>
+ <Text style={s.groupLabel}>المساعدة والخصوصية</Text>
+ <View style={s.menuGroup}>
+  <MenuRow icon="shield-checkmark-outline" label="سياسة الخصوصية" onPress={() => setScreen('privacy')} />
+  <MenuRow icon="chatbubble-ellipses-outline" label="تواصل معنا" onPress={() => setScreen('contact')} />
+ </View>
+ <View style={[s.menuGroup, {marginTop: 12}]}><MenuRow danger icon="log-out-outline" label="تسجيل الخروج" onPress={onLogout} /></View>
  <Modal visible={!!screen} animationType="slide" onRequestClose={() => {
       if (!busy) {
         setScreen(null);
         setSelectedEvent(null);
       }
-    }}><View style={s.modal}><ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled"><Button disabled={busy} onPress={() => {
+    }}><SafeScreen style={s.modal}><ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled"><Button disabled={busy} onPress={() => {
             setScreen(null);
             setSelectedEvent(null);
             setEvaluationSection(null);
@@ -219,23 +236,33 @@ export default function Account({
               }} /><Text style={s.title}>{selectedEvent.title}</Text><Text style={s.heading}>الدور في المخيم</Text><Text style={s.text}>{selectedEvent.role} · {selectedEvent.date} · {selectedEvent.location}</Text><Button onPress={() => setShowCampTeam(!showCampTeam)}>فريق المخيم</Button>{showCampTeam && selectedEvent.team?.map(person => <View key={person.id}><Text style={s.heading}>{person.name}</Text><Text style={s.text}>{person.role}</Text></View>)}{selectedEvent.evaluationSections?.map(section => <Button key={section} onPress={() => setEvaluationSection(section)}>{evaluationLabels[section]}</Button>)}<Text style={s.heading}>عن المخيم</Text><Text style={s.text}>{selectedEvent.about}</Text><Text style={s.heading}>روابط مهمة</Text>{selectedEvent.links.map((link, i) => <Button key={i} onPress={() => openLink(link.url)}>{link.title}</Button>)}</>}</>}
  {['information', 'leaderApplication'].includes(screen) && <><Text style={s.title}>{screen === 'information' ? 'معلوماتي' : 'طلب الإرشاد المعتمد'}</Text>{[...accountFields, ...leaderFields, ['dob', 'تاريخ الميلاد'], ['gender', 'الجنس']].map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text><Text style={s.text}>{key === 'gender' ? application?.details[key] === 'male' ? 'ذكر' : 'أنثى' : application?.details[key] || '—'}</Text></View>)}<Button onPress={() => setScreen('portal')}>العودة إلى بوابة المرشدين</Button></>}
  {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
- </ScrollView></View></Modal></View>;
+ </ScrollView></SafeScreen></Modal></View>;
 }
 const s = StyleSheet.create({
   account: {
-    gap: 4
+    gap: 4,
+    paddingBottom: 18
   },
   identity: {
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 20
+    flexDirection: 'row-reverse', alignItems: 'center', gap: 18,
+    backgroundColor: '#fff', padding: 20, borderRadius: 24,
+    borderWidth: 1, borderColor: '#eee9df', marginBottom: 12
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignSelf: 'center'
-  },
+  identityCopy: {flex: 1, alignItems: 'flex-end', gap: 6},
+  profileName: {fontFamily: 'TajawalBold', fontSize: 23, color: '#28251f', textAlign: 'right'},
+  profileHint: {fontFamily: 'Tajawal', fontSize: 13, color: '#827d70', textAlign: 'right'},
+  statusBadge: {fontFamily: 'TajawalMedium', fontSize: 12, color: '#786221', backgroundColor: '#fff6d7', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, overflow: 'hidden'},
+  avatarWrap: {position: 'relative'},
+  avatar: {width: 76, height: 76, borderRadius: 38},
+  avatarPlaceholder: {backgroundColor: '#fff5d9', alignItems: 'center', justifyContent: 'center'},
+  cameraBadge: {position: 'absolute', bottom: -2, left: 0, backgroundColor: '#ef8427', borderRadius: 15, width: 28, height: 28, borderWidth: 3, borderColor: '#fff', alignItems: 'center', justifyContent: 'center'},
+  groupLabel: {fontFamily: 'TajawalBold', fontSize: 13, color: '#827d70', textAlign: 'right', marginTop: 16, marginBottom: 6, marginHorizontal: 4},
+  menuGroup: {backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#eee9df'},
+  menuRow: {flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, minHeight: 58},
+  menuPressed: {backgroundColor: '#faf7ed'},
+  menuIcon: {width: 34, height: 34, borderRadius: 11, backgroundColor: '#f8f5e9', alignItems: 'center', justifyContent: 'center'},
+  dangerIcon: {backgroundColor: '#fff0eb'},
+  menuLabel: {flex: 1, fontFamily: 'TajawalMedium', fontSize: 16, textAlign: 'right', color: '#34312a'},
   title: {
     fontFamily: 'TajawalBold',
     fontSize: 25,
@@ -301,7 +328,7 @@ const s = StyleSheet.create({
   },
   body: {
     padding: 24,
-    paddingTop: 44,
+    paddingTop: 20,
     paddingBottom: 60,
     width: '100%',
     maxWidth: 620,

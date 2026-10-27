@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   AppState,
   PanResponder,
-  SafeAreaView,
+  StatusBar,
   View,
   Text as NativeText,
   Pressable,
@@ -26,6 +26,7 @@ import CampPoster from "./CampPoster";
 import MediaImage from "./MediaImage";
 import Registrations from "./Registrations";
 import Account from "./Account";
+import SafeAreaView from "./SafeScreen";
 import AccountIdentity from "./AccountIdentity";
 import AuthScreen from "./AuthScreen";
 import {restoreAuth,subscribeAuth,signOut} from "./auth-client";
@@ -328,6 +329,7 @@ export default function App() {
     );
   return (
     <SafeAreaView style={s.root}>
+      <StatusBar barStyle="dark-content" />
       <View style={s.header}>
         <View style={s.brandGroup}>
           <MediaImage
