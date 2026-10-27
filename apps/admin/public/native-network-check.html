@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spark connection check</title>
+<style>body{font:17px system-ui,sans-serif;max-width:640px;margin:32px auto;padding:20px;background:#f6f4ef;color:#252820}button{font:inherit;padding:14px 24px;border:0;border-radius:14px;background:#ef8427;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:18px;background:white;border-radius:16px;font:14px/1.6 monospace}p{line-height:1.6}button:disabled{opacity:.5}</style>
+<h1>Spark connection check</h1><p>This checks this phone’s browser connection to Spark’s API. No email or password is needed.</p><button id="run">Run check</button><pre id="result" role="status" aria-live="polite">Ready.</pre><button id="copy" hidden>Copy result</button>
+<script>
+const result=document.querySelector('#result'),run=document.querySelector('#run'),copy=document.querySelector('#copy');
+async function probe(method){
+ const url=location.origin+'/api/auth?connectionCheck='+Date.now()+'-'+method;
+ try{
+  const response=await fetch(url,{method,credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(20000),...(method==='POST'?{headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',email:'',password:''})}:{})});
+  const text=await response.text();let json;try{json=JSON.parse(text)}catch{}
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const entries=performance.getEntriesByName(url);
+  return {httpStatus:response.status,protocol:entries[entries.length-1]?.nextHopProtocol||'not reported',...(method==='GET'?{configured:json?.configured===true}:{expectedValidationResponse:response.status===400&&typeof json?.error==='string'})};
+ }catch(error){return {error:error.name+': '+error.message}}
+}
+run.onclick=async()=>{run.disabled=true;copy.hidden=true;result.textContent='Checking…';
+ try{const report={pageProtocol:performance.getEntriesByType('navigation')[0]?.nextHopProtocol||'not reported',apiGet:await probe('GET'),apiPost:await probe('POST')};result.textContent=JSON.stringify(report,null,2);copy.hidden=false}
+ catch(error){result.textContent='Check failed: '+error.message}finally{run.disabled=false}
+};
+copy.onclick=async()=>{try{await navigator.clipboard.writeText(result.textContent);copy.textContent='Copied'}catch{copy.textContent='Please select and copy the result above'}};
+</script></html>

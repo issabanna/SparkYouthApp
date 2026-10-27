@@ -40,5 +40,6 @@
   "android16RuntimeVerified": false,
   "arm64LibrariesVerifiedFor16KbPages": 16,
   "qaTrustOverrides": false,
-  "applicationMutationRetries": false
+  "applicationMutationRetries": false,
+  "reportedDeviceConnectionResetPersists": true
 }
