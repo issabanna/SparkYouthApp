@@ -12,6 +12,8 @@ function connectionError(error, timedOut, includeDiagnostic = false) {
     code = 'E_TIMEOUT'; message = 'انتهت مهلة اتصال التطبيق بالخادم.';
   } else if (/ssl|certificate|certpath|trust anchor|handshake/i.test(detail)) {
     code = 'E_TLS'; message = 'تعذّر التحقق من شهادة الاتصال الآمن في أندرويد.';
+  } else if (/connection reset|reset by peer/i.test(detail)) {
+    code = 'E_RESET'; message = 'تم إغلاق اتصال التطبيق بالخادم قبل استلام الرد.';
   } else if (/resolve|unknownhost|name resolution|dns|hostname/i.test(detail)) {
     code = 'E_DNS'; message = 'تعذّر العثور على عنوان الخادم من التطبيق.';
   }

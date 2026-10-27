@@ -17,7 +17,7 @@ const { createApiRequest, connectionError } = require('../apps/mobile/api-reques
   await assert.rejects(check('/api/auth', {headers: {Authorization: 'Bearer secret'}, credentials: 'omit'}), e => !e.diagnostic);
   assert.equal(calls, 1, 'Failed writes must not be retried');
   assert.equal(connectionError(Error('SSLHandshakeException: Trust anchor not found')).code, 'E_TLS');
-  assert.equal(connectionError(Error('connection reset')).code, 'E_NETWORK');
+  assert.equal(connectionError(Error('connection reset')).code, 'E_RESET');
   const apiFailure = createApiRequest(async () => ({ ok: false, status: 401, json: async () => ({error: 'Wrong password'}) }), '');
   await assert.rejects(apiFailure('/api/auth'), e => e.status === 401 && e.message === 'Wrong password' && !e.code);
   const htmlFailure = createApiRequest(async () => ({ ok: false, status: 502, json: async () => { throw SyntaxError('html'); } }), '');

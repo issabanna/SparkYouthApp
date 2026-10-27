@@ -27,3 +27,5 @@ The app uses real Supabase authentication and a private shared registration back
 0.1.5 / Android version code 6: native authenticated requests use Expo fetch with classified connection errors and a credential-free connection-check button on the login screen. Same preview signing key; installs over 0.1.4. Physical-device login verification is pending; do not treat successful packaging as proof that the reported connection failure is resolved.
 
 0.1.6 / code 7: fix Android status-message accessibility crash, including connection-check results. Preserve status semantics with the supported role prop and polite announcements. Show native exception details only for the public credential-free status check. Original login connection failure still needs physical-device verification.
+
+0.1.7 / code 8: Android HTTP/1.1 compatibility build for the reported `SocketException: Connection reset`. Platform TLS checks remain enabled. Tracked Expo plugin preserves client configuration across native regeneration. Failed writes are not automatically replayed. Diagnostic screen includes build/protocol and distinguishes E_RESET. Physical-device verification pending.

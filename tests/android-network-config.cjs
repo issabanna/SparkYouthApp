@@ -1,0 +1,14 @@
+const assert = require('node:assert/strict');
+const {configureApplication} = require('../apps/mobile/plugins/with-android-network.cjs');
+const fixture = 'class MainApplication { override fun onCreate() {\n    super.onCreate()\n    loadReactNative(this)\n  }\n}';
+const configured = configureApplication(fixture);
+assert.equal(configureApplication(configured), configured, 'Prebuild must not install the factory twice');
+assert.ok(configured.indexOf('setOkHttpClientFactory') < configured.indexOf('loadReactNative(this)'), 'Factory must be installed before native networking initializes');
+assert.match(configured, /createClientBuilder\(this\)/, 'Retain React Native cookie/cache defaults');
+assert.match(configured, /protocols\(listOf\(okhttp3.Protocol.HTTP_1_1\)\)/);
+assert.match(configured, /retryOnConnectionFailure\(false\)/, 'Do not replay registration/payment mutations');
+assert.doesNotMatch(configured, /sslSocketFactory|hostnameVerifier|trustManager|HTTP_2|CLEARTEXT/, 'Do not weaken platform TLS');
+assert.throws(() => configureApplication('unknown template'), /Cannot locate/);
+const config = require('../apps/mobile/app.json');
+assert.ok(config.expo.plugins.includes('./plugins/with-android-network.cjs'), 'Networking must survive Expo prebuild');
+console.log('PASS native client installation, regeneration safety, HTTP/1.1 policy and TLS preservation');
