@@ -4,18 +4,19 @@
 <h1>Spark connection check</h1><p>This checks this phone’s browser connection to Spark’s API. No email or password is needed.</p><button id="run">Run check</button><pre id="result" role="status" aria-live="polite">Ready.</pre><button id="copy" hidden>Copy result</button>
 <script>
 const result=document.querySelector('#result'),run=document.querySelector('#run'),copy=document.querySelector('#copy');
-async function probe(method){
- const url=location.origin+'/api/auth?connectionCheck='+Date.now()+'-'+method;
+async function probe(method,{session=false,query=true,staticFile=false}={}){
+ const path=staticFile?'/native-network-check.html':'/api/auth';
+ const url=location.origin+path+(query?'?connectionCheck='+Date.now()+'-'+method+'-'+(session?'session':'anonymous'):'');
  try{
-  const response=await fetch(url,{method,credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(20000),...(method==='POST'?{headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',email:'',password:''})}:{})});
+  const response=await fetch(url,{method,credentials:session?'same-origin':'omit',cache:'no-store',signal:AbortSignal.timeout(20000),...(method==='POST'?{headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',email:'',password:''})}:{})});
   const text=await response.text();let json;try{json=JSON.parse(text)}catch{}
   await new Promise(resolve=>setTimeout(resolve,0));
   const entries=performance.getEntriesByName(url);
-  return {httpStatus:response.status,protocol:entries[entries.length-1]?.nextHopProtocol||'not reported',...(method==='GET'?{configured:json?.configured===true}:{expectedValidationResponse:response.status===400&&typeof json?.error==='string'})};
+  return {httpStatus:response.status,contentType:response.headers.get('Content-Type'),mitigation:response.headers.get('x-vercel-mitigated'),protocol:entries[entries.length-1]?.nextHopProtocol||'not reported',...(staticFile?{}:method==='GET'?{configured:json?.configured===true}:{expectedValidationResponse:response.status===400&&typeof json?.error==='string'})};
  }catch(error){return {error:error.name+': '+error.message}}
 }
 run.onclick=async()=>{run.disabled=true;copy.hidden=true;result.textContent='Checking…';
- try{const report={pageProtocol:performance.getEntriesByType('navigation')[0]?.nextHopProtocol||'not reported',apiGet:await probe('GET'),apiPost:await probe('POST')};result.textContent=JSON.stringify(report,null,2);copy.hidden=false}
+ try{copy.textContent='Copy result';const [apiGet,apiPost,apiGetWithoutQuery,apiGetWithBrowserSession,apiPostWithBrowserSession,staticGet]=await Promise.all([probe('GET'),probe('POST'),probe('GET',{query:false}),probe('GET',{session:true,query:false}),probe('POST',{session:true,query:false}),probe('GET',{staticFile:true})]);const report={checkVersion:2,origin:location.origin,pageProtocol:performance.getEntriesByType('navigation')[0]?.nextHopProtocol||'not reported',apiGet,apiPost,apiGetWithoutQuery,apiGetWithBrowserSession,apiPostWithBrowserSession,staticGet};result.textContent=JSON.stringify(report,null,2);copy.hidden=false}
  catch(error){result.textContent='Check failed: '+error.message}finally{run.disabled=false}
 };
 copy.onclick=async()=>{try{await navigator.clipboard.writeText(result.textContent);copy.textContent='Copied'}catch{copy.textContent='Please select and copy the result above'}};

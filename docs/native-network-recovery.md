@@ -25,3 +25,9 @@ The login form's ScrollView now lets buttons handle taps while an input is focus
 - The original phone's successful login remains pending. This is a signed preview for device testing, not a declaration that every Android device or the full app is ready for store release.
 
 See `tests/android-native/README.md` for the native checks and the distinction between the temporary proxy QA build and the downloadable preview.
+
+## Browser follow-up
+
+The affected phone subsequently loaded `/api/auth` as a top-level browser navigation and received `configured: true`. Regular Chrome also showed connection resets on other attempts. The first browser diagnostic loaded its document over `h2`, but both credential-free API fetches failed with `TypeError: Failed to fetch`. This is not an APK-only reproduction. Protocol h2 for the document does not establish that an API request reached the function.
+
+Diagnostic version 2 compares static-file access, the unchanged auth URL without a query, anonymous auth GET/POST, and normal same-origin browser-session GET/POST. It reports status, response type and Vercel mitigation header when a response is available. No email/password or cookie values are collected. A browser-security cookie gate is a hypothesis to test, not a confirmed cause. The auth route itself does not require browser cookies. No Vercel management session/CLI credential is available in the current workspace to inspect edge-security settings directly.
