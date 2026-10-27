@@ -39,6 +39,6 @@ with zipfile.ZipFile(apk) as z:
     assert header[7]>=16384 and header[2]%16384==header[3]%16384,(name,'Not 16 KB page compatible')
   count+=1
  bundle=z.read('assets/index.android.bundle')
- for marker in ['0.1.8','Cronet','E_RESET','spark-auth-session-v1']:
+ for marker in [config['version'],'Cronet','E_RESET','spark-auth-session-v1']:
   assert marker.encode() in bundle or marker.encode('utf-16le') in bundle,marker
 print(json.dumps({'version':config['version'],'bytes':apk.stat().st_size,'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'signingCertificateSha256':cert,'architectures':sorted(abis),'arm64LibrariesVerifiedFor16KbPages':count,'qaTrustOverrides':False},indent=2))
