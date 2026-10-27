@@ -170,7 +170,7 @@ export default function Account({
         setConsent(false);
         setScreen('apply');
       }
-    }}>{loading ? 'جارٍ تحميل حالة الإرشاد…' : approved ? 'بوابة المرشدين' : pending ? 'طلب الإرشاد بانتظار الموافقة' : application?.status === 'LeaderRejected' ? 'إعادة تقديم طلب الإرشاد' : 'التسجيل كمرشد'}</Button>
+    }}>{loading ? 'جارٍ تحميل حالة الإرشاد…' : !data ? 'إعادة تحميل حالة الإرشاد' : approved ? 'بوابة المرشدين' : pending ? 'طلب الإرشاد بانتظار الموافقة' : application?.status === 'LeaderRejected' ? 'إعادة تقديم طلب الإرشاد' : 'التسجيل كمرشد'}</Button>
  {!!data?.busActivities?.length && <><View style={{
         height: 18
       }} /><MenuRow icon="bus-outline" label="Bus App" onPress={() => setScreen('bus')} /></>}

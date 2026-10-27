@@ -31,14 +31,28 @@ function createApiRequest(transport, origin, timeoutMs = 30000) {
     const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
     try {
       let response;
-      try {
-        response = await transport(origin + path, {
-          cache: 'no-store', ...options, signal: controller.signal
-        });
-      } catch (error) {
-        const statusCheck = path === '/api/auth' && (!options.method || options.method === 'GET') &&
-          !options.body && !options.headers && options.credentials === 'omit';
-        throw connectionError(error, timedOut, statusCheck);
+      const readOnly = ['GET', 'HEAD'].includes((options.method || 'GET').toUpperCase()) && !options.body;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          response = await transport(origin + path, {
+            cache: 'no-store', ...options, signal: controller.signal
+          });
+          break;
+        } catch (error) {
+          const statusCheck = path === '/api/auth' && (!options.method || options.method === 'GET') &&
+            !options.body && !options.headers && options.credentials === 'omit';
+          const failure = connectionError(error, timedOut, statusCheck);
+          // Retry only transport failures on reads, within the original total
+          // deadline. HTTP errors, TLS errors and mutations are never retried.
+          if (!readOnly || attempt >= 2 || controller.signal.aborted ||
+              !['E_RESET', 'E_NETWORK', 'E_DNS'].includes(failure.code)) throw failure;
+          await new Promise(resolve => {
+            const done = () => { clearTimeout(timer); controller.signal.removeEventListener('abort', done); resolve(); };
+            const timer = setTimeout(done, 350 * (2 ** attempt) + Math.random() * 150);
+            controller.signal.addEventListener('abort', done, {once: true});
+          });
+          if (controller.signal.aborted) throw connectionError(error, timedOut, statusCheck);
+        }
       }
       let result;
       try { result = await response.json(); }

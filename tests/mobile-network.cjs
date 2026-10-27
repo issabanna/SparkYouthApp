@@ -16,6 +16,25 @@ const { createApiRequest, connectionError } = require('../apps/mobile/api-reques
   await assert.rejects(check('/api/auth', {method: 'POST', body: secret, credentials: 'omit'}), e => !e.diagnostic);
   await assert.rejects(check('/api/auth', {headers: {Authorization: 'Bearer secret'}, credentials: 'omit'}), e => !e.diagnostic);
   assert.equal(calls, 1, 'Failed writes must not be retried');
+  let readCalls = 0;
+  const recoveringRead = createApiRequest(async () => {
+    if (++readCalls < 3) throw Error('connection reset by peer');
+    return {ok: true, json: async () => ({application: {status: 'LeaderApproved'}})};
+  }, '');
+  assert.equal((await recoveringRead('/api/leaders')).application.status, 'LeaderApproved');
+  assert.equal(readCalls, 3);
+  let permanentCalls = 0;
+  const permanentRead = createApiRequest(async () => {permanentCalls++; throw Error('connection reset');}, '');
+  await assert.rejects(permanentRead('/api/leaders'), e => e.code === 'E_RESET');
+  assert.equal(permanentCalls, 3, 'Read retries must stop after three attempts');
+  let tlsCalls = 0;
+  const tlsRead = createApiRequest(async () => {tlsCalls++; throw Error('SSL certificate invalid');}, '');
+  await assert.rejects(tlsRead('/api/leaders'), e => e.code === 'E_TLS');
+  assert.equal(tlsCalls, 1, 'Certificate errors must not be retried');
+  let deadlineCalls = 0;
+  const deadlineRead = createApiRequest(async () => {deadlineCalls++; throw Error('connection reset');}, '', 10);
+  await assert.rejects(deadlineRead('/api/leaders'), e => e.code === 'E_TIMEOUT');
+  assert.equal(deadlineCalls, 1, 'Retry backoff must respect the original total deadline');
   assert.equal(connectionError(Error('SSLHandshakeException: Trust anchor not found')).code, 'E_TLS');
   assert.equal(connectionError(Error('connection reset')).code, 'E_RESET');
   assert.equal(connectionError(Error('net::ERR_CONNECTION_RESET')).code, 'E_RESET');
