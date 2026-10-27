@@ -371,7 +371,6 @@ export default function App() {
                     }}
                   >
                     <Text style={s.kicker}>أهلًا بعودتك، {user.name}</Text>
-                    <Text style={s.heroTitle}>مغامرتنا تجمعنا</Text>
                   </View>
                 </View>
                 {activeSlide && (
