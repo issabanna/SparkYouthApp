@@ -1,0 +1,49 @@
+{
+  "version": "0.1.11",
+  "bytes": 31692021,
+  "sha256": "4646c621e42343651648c52ac108a0b64912c23170c70f0a0bcd9607a35f1784",
+  "signingCertificateSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+  "architectures": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "arm64LibrariesVerifiedFor16KbPages": 16,
+  "qaTrustOverrides": false,
+  "package": "app.sparkyouth.mobile",
+  "versionCode": 12,
+  "minimumAndroid": "7.0",
+  "targetSdk": 36,
+  "sourceCommit": "2f4094ca74f7f6410144604911611f5025e62b31",
+  "signing": "Same Android preview signing certificate as 0.1.10",
+  "deviceTested": false,
+  "embeddedHermesBundle": true,
+  "nativeTransport": "Bundled Google Cronet",
+  "personalBible": {
+    "translations": [
+      "Arabic Smith–Van Dyke (1865)",
+      "English ASV (1901)"
+    ],
+    "bookCountPerTranslation": 66,
+    "notesPrivateByDefault": true,
+    "sharingAudience": "Signed-in Spark users, explicit per-note opt-in",
+    "offlineReading": false,
+    "newSqlRequired": false
+  },
+  "accountRedesign": true,
+  "androidStatusBarInset": true,
+  "boundedReadRetries": true,
+  "mutationsAutomaticallyRetried": false,
+  "knownIntermittentConnectionResetUnresolved": true,
+  "validation": [
+    "Bible corpus/reference checks",
+    "Bible API ownership/privacy/sharing/revision tests with local Supabase fixture",
+    "Chromium Arabic/English reading and note save/share/unshare",
+    "Existing real-auth regression suite",
+    "Android role and transport plugin checks",
+    "Full web build",
+    "APK package/signature/embedded Bible bundle/16KB ELF verification"
+  ],
+  "physicalDeviceVerification": "Pending for 0.1.11",
+  "mainBibleTab": true,
+  "achievementsInsideAccount": true
+}
