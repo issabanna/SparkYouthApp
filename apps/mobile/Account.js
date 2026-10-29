@@ -40,6 +40,7 @@ export default function Account({
   updateProfile,
   content,
   onNotifications,
+  onBible,
   onLogout
 }) {
   const [data, setData] = useState(null),
@@ -147,6 +148,7 @@ export default function Account({
   <MenuRow icon="person-outline" label="معلومات الحساب" onPress={() => setScreen('identity')} />
   <MenuRow icon="lock-closed-outline" label="تعديل كلمة السر" onPress={() => setScreen('password')} />
   <MenuRow icon="camera-outline" label={busy ? 'جارٍ تحديث الصورة…' : 'تعديل صورة الحساب'} disabled={busy} onPress={changePhoto} />
+  <MenuRow icon="book-outline" label="كتابي المقدس" onPress={onBible} />
   <MenuRow icon="notifications-outline" label="الإشعارات" onPress={onNotifications} />
  </View>
  {!!photoMessage && <Text role="status" accessibilityLiveRegion="polite" style={s.text}>{photoMessage}</Text>}

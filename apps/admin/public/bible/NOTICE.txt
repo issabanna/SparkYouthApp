@@ -1,0 +1,27 @@
+Arabic: Smith & Van Dyke (1865), public-domain historical translation. Source: https://github.com/getbible/Unbound-Biola at 38a275eef7e15a398f6ec08239abc75ed8713456; Arabic__Smith_and_Van_Dyke__arabicsv__RTL.txt. Upstream notice: Translated by Smith & Van Dyke, 1865.
+English: American Standard Version (1901), public domain. Source: https://github.com/scrollmapper/bible_databases at 59b18c5af5845728c275d5b7178ad0d024172b1f; formats/json/ASV.json; source metadata labels ASV Public Domain.
+Changes: data normalized into per-book JSON files; text retained without paraphrasing. Historical text exports may contain transcription issues.
+
+MIT License
+
+Copyright (c) 2024 Scrollmapper
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+ASV edition note: The following numbered verse slots are empty in the source: Matthew 17:21, 18:11, 23:14; Mark 7:16, 9:44, 9:46, 11:26, 15:28; Luke 17:36, 23:17; John 5:4; Acts 8:37, 15:34, 24:7, 28:29; Romans 16:24. The reader marks these as empty rather than supplying another translation's text.

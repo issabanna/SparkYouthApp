@@ -35,3 +35,6 @@ The app uses real Supabase authentication and a private shared registration back
 Affected-phone follow-up: 0.1.8 still reports Cronet ERR_CONNECTION_RESET on the public status check. Emulator passes do not establish that the original connection failure is resolved. A credential-free Chrome protocol/API check is available at /native-network-check.html.
 
 0.1.9 / code 10: remove the large “مغامرتنا تجمعنا” home heading. Native UI and existing Cronet transport retained; same preview signing key. The affected-phone connection reset remains unresolved. No new physical-device verification is claimed for this UI update.
+
+
+0.1.10 / code 11: personal Bible (Arabic Smith–Van Dyke 1865 and English ASV 1901), private verse notes with explicit sharing, remembered reading position/font size, compact account UI, Android status-bar inset and bounded read retries. Same preview signing identity. Online text loading; no full offline edition. No new SQL required beyond existing migration 002. Physical-device verification pending; no claim that the intermittent reset is resolved.

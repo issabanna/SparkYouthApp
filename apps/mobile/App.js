@@ -26,6 +26,7 @@ import CampPoster from "./CampPoster";
 import MediaImage from "./MediaImage";
 import Registrations from "./Registrations";
 import Account from "./Account";
+import BibleReader from "./BibleReader";
 import SafeAreaView from "./SafeScreen";
 import AccountIdentity from "./AccountIdentity";
 import AuthScreen from "./AuthScreen";
@@ -587,9 +588,11 @@ export default function App() {
             {tab === ar.programs && (
               <Registrations content={content} user={user} />
             )}
+            {tab === "الكتاب المقدس" && <BibleReader onBack={() => setTab(ar.learning)} />}
             {tab === ar.learning && (
               <>
                 <Text style={s.kicker}>مساحتك لتكبر</Text>
+                <Button onPress={() => setTab("الكتاب المقدس")}>كتابي المقدس · اقرأ وتأمل</Button>
                 <Text style={s.heroTitle}>مسارات التعلّم</Text>
                 <View style={s.progressCard}>
                   <View
@@ -761,7 +764,7 @@ export default function App() {
                 </Text>
               </>
             )}
-            {tab === ar.account && <Account user={user} profile={profile} updateProfile={updateProfile} content={content} onNotifications={()=>setSelected({type:'announcements'})} onLogout={async()=>{setSelected(null);setTab(ar.home);if(Platform.OS==='web')localStorage.removeItem(sessionKey+':'+authUser.id);try{await signOut()}catch{}}}/>}
+            {tab === ar.account && <Account onBible={() => setTab("الكتاب المقدس")} user={user} profile={profile} updateProfile={updateProfile} content={content} onNotifications={()=>setSelected({type:'announcements'})} onLogout={async()=>{setSelected(null);setTab(ar.home);if(Platform.OS==='web')localStorage.removeItem(sessionKey+':'+authUser.id);try{await signOut()}catch{}}}/>}
           </ScrollView>
           <View style={s.tabDock}>
             <View style={s.tabs}>
@@ -776,20 +779,20 @@ export default function App() {
                   accessibilityRole="tab"
                   accessibilityLabel={label}
                   accessibilityState={{
-                    selected: tab === label,
+                    selected: (tab === label || (tab === "الكتاب المقدس" && label === ar.learning)),
                   }}
                   key={label}
                   onPress={() => setTab(label)}
                   style={s.tab}
                 >
-                  <View style={[s.tabIconWrap, tab === label && s.tabSelected]}>
+                  <View style={[s.tabIconWrap, (tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) && s.tabSelected]}>
                     <Icon
-                      name={tab === label ? filled : outline}
+                      name={(tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) ? filled : outline}
                       size={23}
-                      color={tab === label ? "#111" : "#757575"}
+                      color={(tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) ? "#111" : "#757575"}
                     />
                   </View>
-                  <Text style={[s.tabText, tab === label && s.active]}>
+                  <Text style={[s.tabText, (tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) && s.active]}>
                     {label}
                   </Text>
                 </Pressable>

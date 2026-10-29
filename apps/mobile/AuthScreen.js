@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Platform } from 'react-native';
 import { signIn, signUp, changePassword, apiRequest } from './auth-client';
+const appVersion = require('./app.json').expo.version;
 const Button = ({
   children,
   onPress,
@@ -57,9 +58,9 @@ export default function AuthScreen({
       setMessage('');
       try {
         const result = await apiRequest('/api/auth', { credentials: 'omit' });
-        setMessage(result.configured ? 'الاتصال بالخادم ناجح. جرّب تسجيل الدخول مجددًا. (Android 0.1.9 · Cronet)' : 'خدمة الحسابات غير جاهزة. (Android 0.1.9 · Cronet)');
+        setMessage(result.configured ? `الاتصال بالخادم ناجح. جرّب تسجيل الدخول مجددًا. (Android ${appVersion} · Cronet)` : `خدمة الحسابات غير جاهزة. (Android ${appVersion} · Cronet)`);
       } catch (e) {
-        setMessage(`فحص الاتصال: ${e.message}${e.diagnostic ? '\n' + e.diagnostic : ''} — Android 0.1.9 · Cronet`);
+        setMessage(`فحص الاتصال: ${e.message}${e.diagnostic ? '\n' + e.diagnostic : ''} — Android ${appVersion} · Cronet`);
       } finally { setBusy(false); }
     }}>فحص اتصال التطبيق</Button>}<Button disabled={busy || !email.trim() || !password} onPress={submit}>{busy ? 'جارٍ المتابعة…' : mode === 'login' ? 'دخول' : 'إنشاء الحساب'}</Button><Button secondary disabled={busy} onPress={() => {
       setMode(mode === 'login' ? 'signup' : 'login');
