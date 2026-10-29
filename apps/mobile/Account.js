@@ -41,8 +41,10 @@ export default function Account({
   content,
   onNotifications,
   onBible,
+  achievements,
   onLogout
 }) {
+  const [showAchievements, setShowAchievements] = useState(false);
   const [data, setData] = useState(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
@@ -143,6 +145,8 @@ export default function Account({
    {data && <Text style={s.statusBadge}>{approved ? 'مرشد معتمد' : pending ? 'طلب الإرشاد قيد المراجعة' : 'حساب سبارك'}</Text>}
   </View>
  </View>
+ <View style={s.menuGroup}><Pressable accessibilityRole="button" accessibilityLabel="الترتيب والإنجازات" accessibilityState={{expanded: showAchievements}} onPress={() => setShowAchievements(value => !value)} style={s.menuRow}><View style={s.menuIcon}><Ionicons name="trophy-outline" size={21} color="#706329" /></View><Text style={s.menuLabel}>الترتيب والإنجازات</Text><Ionicons name={showAchievements ? 'chevron-up' : 'chevron-down'} size={18} color="#aaa596" /></Pressable>
+ {showAchievements && <View style={{padding: 16}}>{achievements}</View>}</View>
  <Text style={s.groupLabel}>إعدادات الحساب</Text>
  <View style={s.menuGroup}>
   <MenuRow icon="person-outline" label="معلومات الحساب" onPress={() => setScreen('identity')} />

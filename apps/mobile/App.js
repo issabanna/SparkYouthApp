@@ -722,8 +722,7 @@ export default function App() {
               </>
             )}
 
-            {tab === ar.ranking && (
-              <>
+            {tab === ar.account && <Account achievements={<>
                 <Text style={s.kicker}>كل خطوة تستحق التقدير</Text>
                 <Text style={s.heroTitle}>لوحة الإنجاز</Text>
                 <Text style={s.body}>
@@ -762,37 +761,35 @@ export default function App() {
                 <Text style={s.info}>
                   سيُربط ترتيب المجتمع الفعلي بالحسابات وقاعدة البيانات.
                 </Text>
-              </>
-            )}
-            {tab === ar.account && <Account onBible={() => setTab("الكتاب المقدس")} user={user} profile={profile} updateProfile={updateProfile} content={content} onNotifications={()=>setSelected({type:'announcements'})} onLogout={async()=>{setSelected(null);setTab(ar.home);if(Platform.OS==='web')localStorage.removeItem(sessionKey+':'+authUser.id);try{await signOut()}catch{}}}/>}
+              </>} onBible={() => setTab("الكتاب المقدس")} user={user} profile={profile} updateProfile={updateProfile} content={content} onNotifications={()=>setSelected({type:'announcements'})} onLogout={async()=>{setSelected(null);setTab(ar.home);if(Platform.OS==='web')localStorage.removeItem(sessionKey+':'+authUser.id);try{await signOut()}catch{}}}/>}
           </ScrollView>
           <View style={s.tabDock}>
             <View style={s.tabs}>
               {[
                 [ar.home, "home", "home-outline"],
                 [ar.programs, "bonfire", "bonfire-outline"],
-                [ar.learning, "book", "book-outline"],
-                [ar.ranking, "trophy", "trophy-outline"],
+                [ar.learning, "school", "school-outline"],
+                ["الكتاب المقدس", "book", "book-outline"],
                 [ar.account, "person", "person-outline"],
               ].map(([label, filled, outline]) => (
                 <Pressable
                   accessibilityRole="tab"
                   accessibilityLabel={label}
                   accessibilityState={{
-                    selected: (tab === label || (tab === "الكتاب المقدس" && label === ar.learning)),
+                    selected: tab === label,
                   }}
                   key={label}
                   onPress={() => setTab(label)}
                   style={s.tab}
                 >
-                  <View style={[s.tabIconWrap, (tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) && s.tabSelected]}>
+                  <View style={[s.tabIconWrap, tab === label && s.tabSelected]}>
                     <Icon
-                      name={(tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) ? filled : outline}
+                      name={tab === label ? filled : outline}
                       size={23}
-                      color={(tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) ? "#111" : "#757575"}
+                      color={tab === label ? "#111" : "#757575"}
                     />
                   </View>
-                  <Text style={[s.tabText, (tab === label || (tab === "الكتاب المقدس" && label === ar.learning)) && s.active]}>
+                  <Text style={[s.tabText, tab === label && s.active]}>
                     {label}
                   </Text>
                 </Pressable>

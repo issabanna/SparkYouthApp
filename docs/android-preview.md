@@ -51,3 +51,6 @@ Version 0.1.9 (code 10) removes the large home heading “مغامرتنا تج�
 
 
 Version 0.1.10 (code 11) adds the personal Arabic/English Bible reader, account-backed private verse notes with explicit sharing/unsharing, saved reading position/font size and source notices. It includes the compact account redesign, Android status-bar top inset and bounded transient read-request retries added since 0.1.9. Diagnostic labels now read the version from app.json. Bible reading currently requires connectivity; text is served in per-book JSON from Spark. Note storage uses the existing migration 002. Native package/signature/bundle/TLS-policy checks passed; physical-device testing of this build remains pending, and the underlying intermittent connection reset is not claimed fixed.
+
+
+0.1.11 / code 12: Bible is now a main bottom-navigation tab. Ranking and achievements are merged into an expandable section inside Account. Existing Bible/account actions are preserved; preview signing identity is unchanged. Physical-device verification remains pending.
