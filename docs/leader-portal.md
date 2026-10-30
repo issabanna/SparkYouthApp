@@ -29,3 +29,8 @@ Each evaluation stores the camp ID, title and year, evaluation year, evaluator, 
 Bus permissions are assigned to any saved account in the separate admin menu, independently of leader approval. Only assigned activities and a Bus App button are exposed. The server verifies activity permissions for totals, QR lookups and boarding mutations. The QR contains registration/activity IDs only; camper names/status are resolved server-side. Only Confirmed registrations may board. Boarding is atomic, audited and idempotent. Totals count non-cancelled/non-rejected registrations; pending is registered minus boarded.
 
 Live camera scanning currently uses the browser BarcodeDetector API on supported HTTPS browsers (for example Chrome on Android), with a manual QR-content fallback. Native camera scanning is not included in the existing APK. Test camera permission, lens behavior and QR detection on physical devices before camp use; browser tests mock the camera and detector.
+
+
+## Portal presentation (0.1.12)
+
+The native/web portal now uses reusable cards, icon actions, role badges and compact back links. Overview shows real assigned-activity/general-link counts and vertically stacked activity cards. Camp details group role/date/location, team, permitted evaluations, description and admin links. Personal/application details use labeled read-only cards. Evaluation screens provide a searchable subject list, real completion counts, person photo/role/history, and numbered question cards with completion progress. Existing server authorization, tent/team scoping, form questions, optimistic evaluation version checks and audit handling are retained. Team and links remain available to all assigned roles. No self-assignment or new event registration action is added.

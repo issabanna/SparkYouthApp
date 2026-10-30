@@ -19,6 +19,7 @@ function noteInput(value) {
   if (value.visibility !== undefined && !['private', 'shared'].includes(value.visibility)) throw Error('اختر خصوصية الملاحظة.');
   return {...ref, text, visibility: value.visibility || 'private'};
 }
+function verseKey(ref) {return [ref.translation,ref.book,ref.chapter,ref.verse].join(':');}
 function label(ref) {
   const book = catalog.books.find(b => b.id === ref.book);
   return `${book?.ar || ''} ${ref.chapter}${ref.verse ? ':' + ref.verse : ''}`;
@@ -31,4 +32,4 @@ function sharedNotes(records, ref, ownId) {
       mine: record.id === ownId
     }))).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 50);
 }
-module.exports = {catalog, translations, defaultReference, reference, noteInput, label, sharedNotes};
+module.exports = {catalog, translations, defaultReference, reference, noteInput, verseKey, label, sharedNotes};

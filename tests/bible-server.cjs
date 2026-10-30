@@ -84,6 +84,15 @@ const db=http.createServer(async(req,res)=>{try{
   assert.equal((await json(await get(otherDevice))).notes.length,2);
   lib=await json(await save(first,{action:'delete',revision:3,id:sharedId}));assert.equal(lib.notes.length,1);
   await json(await save(first,{action:'save',revision:4,note:{...note,verse:999}}),400);
+  const verse={translation:'ar-svd',book:43,chapter:1,verse:1};
+  lib=await json(await save(first,{action:'highlight',revision:4,reference:verse}));assert.equal(lib.highlights.length,1);assert.equal(lib.revision,5);assert.equal(lib.notes[0].text,'private-only-sentinel');assert.equal(lib.progress.book,66);
+  assert.deepEqual((await json(await get(second))).highlights,[]);
+  lib=await json(await save(first,{action:'highlight',revision:5,reference:verse}));assert.equal(lib.highlights.length,1,'Repeated highlight does not duplicate a verse');
+  await json(await save(first,{action:'highlight',revision:5,reference:verse,remove:true}),409);
+  assert.ok(!JSON.stringify(await json(await feed(second))).includes('highlights'));
+  lib=await json(await save(first,{action:'highlight',revision:6,reference:verse,remove:true}));assert.deepEqual(lib.highlights,[]);
+  await json(await save(first,{action:'highlight',revision:7,reference:{...verse,verse:999}}),400);
+  await json(await save(first,{action:'highlight',revision:7,reference:verse,remove:'false'}),400);
   // Native and web share these authenticated endpoints; verify web reading and note controls.
   browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
   const context=await browser.newContext({viewport:{width:390,height:844}});
@@ -91,9 +100,19 @@ const db=http.createServer(async(req,res)=>{try{
   page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/app');await page.getByRole('tab',{name:'حسابي',exact:true}).click();
   await page.getByRole('button',{name:'كتابي المقدس',exact:true}).click();await page.getByText('كتابي المقدس',{exact:true}).waitFor();
+  assert.equal(await page.getByLabel('ترجمة الكتاب المقدس',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'إعدادات القراءة',exact:true}).click();
   await page.getByLabel('ترجمة الكتاب المقدس',{exact:true}).selectOption('ar-svd');
   await page.getByLabel('سفر الكتاب المقدس',{exact:true}).selectOption('43');await page.getByLabel('الإصحاح',{exact:true}).selectOption('1');
-  await page.getByRole('button',{name:'إضافة ملاحظة على يوحنا 1:1',exact:true}).click();
+  await page.getByRole('button',{name:'متابعة القراءة',exact:true}).click();
+  await page.getByRole('button',{name:'خيارات الآية يوحنا 1:1',exact:true}).click();
+  await page.getByRole('button',{name:'تظليل الآية',exact:true}).waitFor();await page.screenshot({path:'/tmp/spark-bible-verse-actions.png',animations:'disabled'});await page.getByRole('button',{name:'تظليل الآية',exact:true}).click();await page.getByText('تم تظليل الآية لك فقط.',{exact:true}).waitFor();
+  assert.equal((await json(await get(first))).highlights.length,1);assert.deepEqual((await json(await get(second))).highlights,[]);
+  await page.getByRole('button',{name:'حفظ موضع القراءة',exact:true}).click();await page.getByText('تم حفظ موضع القراءة وحجم الخط لحسابك.',{exact:true}).waitFor();
+  await page.reload();await page.getByRole('tab',{name:'الكتاب المقدس',exact:true}).click();
+  await page.getByRole('button',{name:'خيارات الآية يوحنا 1:1',exact:true}).click();
+  await page.getByRole('button',{name:'إزالة التظليل',exact:true}).waitFor();
+  await page.getByRole('button',{name:'كتابة تعليق',exact:true}).click();
   assert.equal(await page.getByRole('switch',{name:'مشاركة الملاحظة مع مستخدمي سبارك'}).isChecked(),false);
   await page.getByLabel('ملاحظتي على الآية').fill('ملاحظة خاصة من اختبار المتصفح');
   await page.getByRole('button',{name:'حفظ الملاحظة',exact:true}).click();await page.getByText('تم حفظ ملاحظتك الخاصة.',{exact:true}).waitFor();
@@ -106,11 +125,11 @@ const db=http.createServer(async(req,res)=>{try{
   await page.getByRole('switch',{name:'مشاركة الملاحظة مع مستخدمي سبارك'}).click();
   await page.getByRole('button',{name:'حفظ الملاحظة',exact:true}).click();await page.getByText('تم حفظ ملاحظتك الخاصة.',{exact:true}).waitFor();
   assert.deepEqual((await json(await feed(second))).notes,[]);
-  await page.getByRole('tab',{name:'القراءة',exact:true}).click();await page.getByLabel('ترجمة الكتاب المقدس',{exact:true}).selectOption('en-asv');
+  await page.getByRole('tab',{name:'القراءة',exact:true}).click();await page.getByRole('button',{name:'إعدادات القراءة',exact:true}).click();await page.getByLabel('ترجمة الكتاب المقدس',{exact:true}).selectOption('en-asv');await page.screenshot({path:'/tmp/spark-bible-settings-sheet.png',animations:'disabled'});await page.getByRole('button',{name:'متابعة القراءة',exact:true}).click();await page.getByLabel('ترجمة الكتاب المقدس',{exact:true}).waitFor({state:'hidden'});
   await page.getByText('In the beginning was the Word, and the Word was with God, and the Word was God.',{exact:false}).waitFor();
-  await page.screenshot({path:'/tmp/spark-bible-reader.png',fullPage:true});
+  await page.screenshot({path:'/tmp/spark-bible-reader.png',fullPage:true,animations:'disabled'});
   assert.deepEqual(errors,[]);
-  console.log('PASS Bible API real-auth ownership, private default, sharing/unsharing, revision conflicts, mutation isolation, persistence and Arabic/English reader UI');
+  console.log('PASS Bible API real-auth ownership, private default, sharing/unsharing, revision conflicts, mutation isolation, persistence private highlights, settings sheet, verse actions and Arabic/English reader UI');
  }catch(e){console.error(log);if(page)console.error((await page.locator('body').innerText()).slice(-4500));throw e}
  finally{await browser?.close();await api.dispose();server.kill('SIGTERM');db.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

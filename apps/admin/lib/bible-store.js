@@ -11,7 +11,7 @@ export async function readLibrary(owner) {
 }
 export function privateLibrary(record) {
   return {revision: record?.revision || 0, notes: (record?.notes || []).filter(n => !n.deleted),
-    progress: record?.progress || bible.defaultReference, fontSize: record?.fontSize || 21};
+    highlights: record?.highlights || [], progress: record?.progress || bible.defaultReference, fontSize: record?.fontSize || 21};
 }
 export async function publicChapterNotes(ref, ownId) {
   const {data, error} = await client().from('spark_registrations').select('record')
@@ -32,6 +32,15 @@ export async function updateLibrary(owner, body, author) {
     }
     if (!Number.isInteger(body.revision) || body.revision !== current.revision) {
       const error = Error('تغيّرت ملاحظاتك على جهاز آخر. حدّث القائمة ثم حاول مجددًا.'); error.status = 409; throw error;
+    }
+    if (body.action === 'highlight') {
+      const ref = bible.reference(body.reference, true);
+      if (body.remove !== undefined && typeof body.remove !== 'boolean') throw Error('اختر إجراء تظليل صحيحًا.');
+      const key = bible.verseKey(ref), currentHighlights = current.highlights || [];
+      const remaining = currentHighlights.filter(h => bible.verseKey(h) !== key);
+      if (!body.remove && remaining.length >= 1000) throw Error('يمكن حفظ 1000 آية مظللة. أزل تظليلًا قديمًا لإضافة المزيد.');
+      const highlights = body.remove ? remaining : [...remaining, {...ref, updatedAt: new Date().toISOString()}];
+      return {...current, highlights, revision: current.revision + 1, updatedAt: new Date().toISOString()};
     }
     const existing = body.id && current.notes.find(n => n.id === body.id);
     if (body.id && !existing) {const error = Error('الملاحظة غير موجودة.'); error.status = 404; throw error;}

@@ -1,7 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {View, Text, Pressable, TextInput, Switch, StyleSheet, ActivityIndicator, Linking} from 'react-native';
+import {View, Text, Pressable, TextInput, Switch, StyleSheet, ActivityIndicator, Linking, Modal, ScrollView} from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {Picker} from './Picker';
+import SafeScreen from './SafeScreen';
 import {apiRequest, authenticatedRequest} from './auth-client';
 const bible = require('../../packages/shared/bible');
 const write = body => authenticatedRequest('/api/bible', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -14,6 +15,7 @@ export default function BibleReader({onBack}) {
     [error, setError] = useState(''), [chapterError, setChapterError] = useState(''), [notice, setNotice] = useState(''),
     [fontSize, setFontSize] = useState(21), [view, setView] = useState('read'), [draft, setDraft] = useState(null),
     [busy, setBusy] = useState(false), [shared, setShared] = useState(null), [feedError, setFeedError] = useState(''),
+    [settingsOpen,setSettingsOpen]=useState(false), [selectedVerse,setSelectedVerse]=useState(null),
     [reload, setReload] = useState(0), [feedReload, setFeedReload] = useState(0);
   const requestId = useRef(0), feedId = useRef(0), alive = useRef(true), cache = useRef(new Map());
   const translation = bible.translations.find(t => t.id === ref.translation), book = bible.catalog.books[ref.book - 1];
@@ -76,15 +78,13 @@ export default function BibleReader({onBack}) {
     setLibrary(data); setDraft(null); setNotice(note.visibility === 'shared' ? 'تم حفظ الملاحظة ومشاركتها مع مستخدمي سبارك.' : 'تم حفظ ملاحظتك الخاصة.'); setFeedReload(n => n + 1);
   }
   return <View style={s.page}>
-    <Pressable accessibilityRole="button" onPress={onBack} style={s.back}><Text style={s.muted}>العودة</Text><Ionicons name="arrow-forward" size={18} color="#716534" /></Pressable>
-    <View style={s.hero}><View style={s.heroIcon}><Ionicons name="book-outline" size={28} color="#877022" /></View><Text style={s.title}>كتابي المقدس</Text><Text style={s.muted}>اقرأ، تأمل، واحتفظ بما يلمس قلبك.</Text></View>
+    <View style={s.readerHeader}>
+      <Pressable accessibilityRole="button" accessibilityLabel="إعدادات القراءة" accessibilityState={{expanded:settingsOpen}} disabled={busy||!!draft} onPress={()=>setSettingsOpen(true)} style={s.settingsIcon}><Ionicons name="options-outline" size={23} color="#8b7028"/></Pressable>
+      <View style={{flex:1,gap:4}}><Text style={s.title}>كتابي المقدس</Text><Text style={s.muted}>{bible.label(ref)} · {rtl?'العربية':'English'}</Text></View>
+      <Pressable accessibilityRole="button" accessibilityLabel="العودة" onPress={onBack} style={s.settingsIcon}><Ionicons name="arrow-forward" size={20} color="#8b7028"/></Pressable>
+    </View>
     {!!error && <><Text accessibilityRole="alert" style={s.error}>{error}</Text><Action secondary disabled={busy} onPress={() => loadLibrary(!library)}>تحديث ملاحظاتي</Action></>}
     {!!notice && <Text role="status" accessibilityLiveRegion="polite" style={s.notice}>{notice}</Text>}
-    <View style={s.panel}>
-      <Text style={s.label}>الترجمة</Text><Picker accessibilityLabel="ترجمة الكتاب المقدس" selectedValue={ref.translation} enabled={!busy && !draft} onValueChange={translation => setRef({...ref, translation, chapter: Math.min(ref.chapter, book.verses[translation].length)})}>{bible.translations.map(t => <Picker.Item key={t.id} label={t.name} value={t.id} />)}</Picker>
-      <Text style={s.label}>السفر</Text><Picker accessibilityLabel="سفر الكتاب المقدس" selectedValue={ref.book} enabled={!busy && !draft} onValueChange={value => setRef({...ref, book: Number(value), chapter: 1})}>{bible.catalog.books.map(b => <Picker.Item key={b.id} label={rtl ? b.ar : b.en} value={b.id} />)}</Picker>
-      <Text style={s.label}>الإصحاح</Text><Picker accessibilityLabel="الإصحاح" selectedValue={ref.chapter} enabled={!busy && !draft} onValueChange={value => setRef({...ref, chapter: Number(value)})}>{book.verses[ref.translation].map((_, i) => <Picker.Item key={i} label={String(i + 1)} value={i + 1} />)}</Picker>
-    </View>
     <View style={s.tabs}>{[['read','القراءة'],['notes','ملاحظاتي'],['shared','تأملات مشتركة']].map(([id, text]) => <Pressable key={id} accessibilityRole="tab" accessibilityLabel={text} accessibilityState={{selected: view === id}} disabled={!!draft || busy} onPress={() => setView(id)} style={[s.tab, view === id && s.activeTab]}><Text style={s.tabText}>{text}</Text></Pressable>)}</View>
     {draft ? <View style={s.panel}>
       <Text style={s.heading}>{draft.id ? 'تعديل الملاحظة' : 'ملاحظة جديدة'} · {bible.label(draft)}</Text>
@@ -97,26 +97,50 @@ export default function BibleReader({onBack}) {
       {draft.confirmDelete && <><Text style={s.error}>هل تريد حذف الملاحظة نهائيًا؟</Text><Action disabled={busy} onPress={() => act(async () => {setLibrary(await write({action: 'delete', id: draft.id, revision: library.revision})); setDraft(null); setNotice('تم حذف الملاحظة.'); setFeedReload(n => n + 1);})}>تأكيد الحذف</Action></>}
     </View> : <>
       {view === 'read' && <>
-        <View style={s.readTools}><Pressable accessibilityRole="button" accessibilityLabel="تصغير خط الكتاب المقدس" disabled={fontSize === 18} onPress={() => setFontSize(n => Math.max(18,n - 3))} style={s.fontButton}><Text style={s.heading}>A−</Text></Pressable><Text style={s.muted}>حجم الخط</Text><Pressable accessibilityRole="button" accessibilityLabel="تكبير خط الكتاب المقدس" disabled={fontSize === 30} onPress={() => setFontSize(n => Math.min(30,n + 3))} style={s.fontButton}><Text style={s.heading}>A+</Text></Pressable></View>
+
         <Text style={s.heading}>{rtl ? book.ar : book.en} · {ref.chapter}</Text>
-        <Text style={s.muted}>اضغط على آية لإضافة ملاحظة خاصة.</Text>
+        <Text style={s.muted}>اضغط على آية لتظليلها أو كتابة تعليق.</Text>
         {chapterLoading && <ActivityIndicator accessibilityLabel="تحميل الإصحاح" color="#b38b24" />}
         {!!chapterError && <><Text accessibilityRole="alert" style={s.error}>{chapterError}</Text><Action secondary onPress={() => setReload(n => n + 1)}>إعادة تحميل الإصحاح</Action></>}
-        {chapter && <View style={s.scripture}>{Object.entries(chapter).map(([number, text]) => <Pressable key={number} accessibilityRole="button" accessibilityLabel={`إضافة ملاحظة على ${bible.label({...ref, verse: Number(number)})}`} onPress={() => openNote({...ref, verse: Number(number), text: '', visibility: 'private'})} style={s.verse}><Text style={[s.verseText, {fontSize, lineHeight: fontSize * 1.85, textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr'}]}><Text style={s.verseNumber}>{number}  </Text>{text || (rtl ? 'لا يوجد نص لهذا الرقم في هذه الطبعة.' : '[This verse number has no text in this edition.]')}</Text>{library?.notes.some(n => n.book === ref.book && n.chapter === ref.chapter && n.verse === Number(number)) && <Text style={s.noteHint}>لديك ملاحظة على هذه الآية</Text>}</Pressable>)}</View>}
+        {chapter && <View style={s.scripture}>{Object.entries(chapter).map(([number, text]) => <Pressable key={number} accessibilityRole="button" accessibilityLabel={`خيارات الآية ${bible.label({...ref, verse: Number(number)})}`} onPress={() => setSelectedVerse({...ref,verse:Number(number)})} style={[s.verse,library?.highlights?.some(h=>bible.verseKey(h)===bible.verseKey({...ref,verse:Number(number)}))&&s.highlight]}><Text style={[s.verseText, {fontSize, lineHeight: fontSize * 1.85, textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr'}]}><Text style={s.verseNumber}>{number}  </Text>{text || (rtl ? 'لا يوجد نص لهذا الرقم في هذه الطبعة.' : '[This verse number has no text in this edition.]')}</Text>{library?.notes.some(n => n.book === ref.book && n.chapter === ref.chapter && n.verse === Number(number)) && <Text style={s.noteHint}>لديك ملاحظة على هذه الآية</Text>}</Pressable>)}</View>}
         <View style={s.navigation}><Action secondary disabled={ref.book === 1 && ref.chapter === 1} onPress={() => move(-1)}>الإصحاح السابق</Action><Action secondary disabled={ref.book === 66 && ref.chapter === book.verses[ref.translation].length} onPress={() => move(1)}>الإصحاح التالي</Action></View>
         <Action disabled={busy || !library || !chapter} secondary onPress={() => act(async () => {await write({action: 'progress', reference: ref, fontSize}); setNotice('تم حفظ موضع القراءة وحجم الخط لحسابك.');})}>حفظ موضع القراءة</Action>
       </>}
       {view === 'notes' && <><Text style={s.heading}>ملاحظاتي الشخصية</Text><Text style={s.muted}>ملاحظاتك من جميع الأسفار والترجمات. المشاركة اختيارية لكل ملاحظة.</Text>{!library ? <Action secondary onPress={() => loadLibrary()}>تحميل ملاحظاتي</Action> : !library.notes.length ? <Text style={s.empty}>لم تضف ملاحظات بعد. اختر آية أثناء القراءة لتبدأ.</Text> : library.notes.map(n => <View key={n.id} style={s.panel}><Text style={s.heading}>{bible.label(n)}</Text><Text style={s.muted}>{bible.translations.find(t => t.id === n.translation)?.name} · {n.visibility === 'shared' ? 'مشتركة' : 'خاصة'}</Text><Text style={s.noteText}>{n.text}</Text><View style={s.navigation}><Action secondary onPress={() => {setRef(bible.reference(n)); setView('read');}}>قراءة الإصحاح</Action><Action secondary onPress={() => openNote(n)}>تعديل الملاحظة</Action></View></View>)}</>}
       {view === 'shared' && <><Text style={s.heading}>تأملات على {bible.label(ref)}</Text><Text style={s.muted}>ملاحظات اختار أصحابها مشاركتها مع مستخدمي سبارك. تعرض آخر 50 ملاحظة متاحة لهذا الإصحاح.</Text><Action secondary onPress={() => setFeedReload(n => n + 1)}>تحديث التأملات</Action>{feedError ? <Text accessibilityRole="alert" style={s.error}>{feedError}</Text> : shared === null ? <ActivityIndicator accessibilityLabel="تحميل التأملات المشتركة" /> : !shared.length ? <Text style={s.empty}>لا توجد تأملات مشتركة لهذا الإصحاح بعد.</Text> : shared.map(n => <View key={n.id} style={s.panel}><Text style={s.heading}>{bible.label(n)}</Text><Text style={s.muted}>{n.author} · {bible.translations.find(t => t.id === n.translation)?.name}</Text><Text style={s.noteText}>{n.text}</Text>{n.mine && <Action secondary onPress={() => {const own = library?.notes.find(note => note.id === n.id); if (own) openNote(own); else {setError('حدّث ملاحظاتك لفتح هذه الملاحظة.');}}}>تعديل ملاحظتي</Action>}</View>)}</>}
     </>}
+    <Modal visible={settingsOpen} transparent animationType="slide" onRequestClose={()=>setSettingsOpen(false)}>
+      <SafeScreen style={s.overlay}><Pressable accessibilityRole="button" accessibilityLabel="إغلاق إعدادات القراءة" onPress={()=>setSettingsOpen(false)} style={s.backdrop}/><View style={s.sheet}><View style={s.sheetHeader}><Text style={s.heading}>إعدادات القراءة</Text><Pressable accessibilityRole="button" accessibilityLabel="إغلاق" onPress={()=>setSettingsOpen(false)} style={s.settingsIcon}><Ionicons name="close" size={22} color="#81744e"/></Pressable></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:16,paddingBottom:20}}>
+    <View style={s.panel}>
+      <Text style={s.label}>الترجمة</Text><Picker accessibilityLabel="ترجمة الكتاب المقدس" selectedValue={ref.translation} enabled={!busy && !draft} onValueChange={translation => setRef({...ref, translation, chapter: Math.min(ref.chapter, book.verses[translation].length)})}>{bible.translations.map(t => <Picker.Item key={t.id} label={t.name} value={t.id} />)}</Picker>
+      <Text style={s.label}>السفر</Text><Picker accessibilityLabel="سفر الكتاب المقدس" selectedValue={ref.book} enabled={!busy && !draft} onValueChange={value => setRef({...ref, book: Number(value), chapter: 1})}>{bible.catalog.books.map(b => <Picker.Item key={b.id} label={rtl ? b.ar : b.en} value={b.id} />)}</Picker>
+      <Text style={s.label}>الإصحاح</Text><Picker accessibilityLabel="الإصحاح" selectedValue={ref.chapter} enabled={!busy && !draft} onValueChange={value => setRef({...ref, chapter: Number(value)})}>{book.verses[ref.translation].map((_, i) => <Picker.Item key={i} label={String(i + 1)} value={i + 1} />)}</Picker>
+    </View>
+<View style={s.readTools}><Pressable accessibilityRole="button" accessibilityLabel="تصغير خط الكتاب المقدس" disabled={fontSize === 18} onPress={() => setFontSize(n => Math.max(18,n - 3))} style={s.fontButton}><Text style={s.heading}>A−</Text></Pressable><Text style={s.muted}>حجم الخط</Text><Pressable accessibilityRole="button" accessibilityLabel="تكبير خط الكتاب المقدس" disabled={fontSize === 30} onPress={() => setFontSize(n => Math.min(30,n + 3))} style={s.fontButton}><Text style={s.heading}>A+</Text></Pressable></View>
+      <Action onPress={()=>setSettingsOpen(false)}>متابعة القراءة</Action></ScrollView></View></SafeScreen>
+    </Modal>
+    <Modal visible={!!selectedVerse} transparent animationType="slide" onRequestClose={()=>{if(!busy)setSelectedVerse(null);}}>
+      <SafeScreen style={s.overlay}><Pressable accessibilityRole="button" accessibilityLabel="إغلاق خيارات الآية" disabled={busy} onPress={()=>setSelectedVerse(null)} style={s.backdrop}/><View style={s.sheet}><View style={s.sheetHeader}><Text style={s.heading}>{selectedVerse?bible.label(selectedVerse):''}</Text><Pressable accessibilityRole="button" accessibilityLabel="إغلاق" disabled={busy} onPress={()=>setSelectedVerse(null)} style={s.settingsIcon}><Ionicons name="close" size={22} color="#81744e"/></Pressable></View>
+      {!!selectedVerse && <><Text numberOfLines={4} style={[s.noteText,{textAlign:rtl?'right':'left'}]}>{chapter?.[selectedVerse.verse]}</Text><Text style={s.muted}>اختر تظليل الآية أو كتابة تعليق عليها.</Text>
+      <Action secondary disabled={busy||!library} onPress={()=>act(async()=>{
+        const highlighted=library.highlights?.some(h=>bible.verseKey(h)===bible.verseKey(selectedVerse));
+        const data=await write({action:'highlight',reference:selectedVerse,revision:library.revision,remove:!!highlighted});
+        setLibrary(data);setSelectedVerse(null);setNotice(highlighted?'تمت إزالة التظليل.':'تم تظليل الآية لك فقط.');
+      })}>{library?.highlights?.some(h=>bible.verseKey(h)===bible.verseKey(selectedVerse))?'إزالة التظليل':'تظليل الآية'}</Action>
+      <Action disabled={busy} onPress={()=>{openNote({...selectedVerse,text:'',visibility:'private'});setSelectedVerse(null);}}>كتابة تعليق</Action>
+      </>}
+      </View></SafeScreen>
+    </Modal>
     <Text style={s.credit}>{translation.attribution}</Text>
     <Action secondary onPress={() => {Linking.openURL('https://sparkyouth.vercel.app/bible/NOTICE.txt').catch(() => setError('تعذّر فتح مصادر النصوص.'));}}>مصادر النصوص وحقوق الاستخدام</Action>
   </View>;
 }
 const s = StyleSheet.create({
+  readerHeader:{flexDirection:'row',direction:'ltr',alignItems:'center',gap:12,paddingVertical:8},settingsIcon:{width:44,height:44,borderRadius:14,backgroundColor:'#fff3d1',alignItems:'center',justifyContent:'center'},
+  overlay:{flex:1,backgroundColor:'#18140e66',justifyContent:'flex-end'},backdrop:{flex:1},sheet:{backgroundColor:'#faf8f2',borderTopLeftRadius:28,borderTopRightRadius:28,padding:22,paddingBottom:30,maxHeight:'88%',gap:18,width:'100%',maxWidth:620,alignSelf:'center'},sheetHeader:{flexDirection:'row-reverse',justifyContent:'space-between',alignItems:'center',gap:12},highlight:{backgroundColor:'#fff0a6',borderRadius:12,paddingHorizontal:8},
   page:{gap:12,paddingBottom:24}, back:{flexDirection:'row-reverse',gap:8,alignItems:'center',alignSelf:'flex-end',minHeight:44},
   hero:{alignItems:'center',gap:8,paddingVertical:14},heroIcon:{backgroundColor:'#fff2c8',padding:16,borderRadius:22},
-  title:{fontFamily:'TajawalBold',fontSize:28,color:'#302d26'},heading:{fontFamily:'TajawalBold',fontSize:19,color:'#39352c',textAlign:'right'},
+  title:{fontFamily:'TajawalBold',fontSize:23,textAlign:'right',color:'#302d26'},heading:{fontFamily:'TajawalBold',fontSize:19,color:'#39352c',textAlign:'right'},
   panel:{backgroundColor:'#fff',borderWidth:1,borderColor:'#ece6d9',padding:16,borderRadius:20,gap:10},
   label:{fontFamily:'TajawalBold',fontSize:15,textAlign:'right',color:'#4b4538'},muted:{fontFamily:'Tajawal',fontSize:14,lineHeight:23,color:'#847c6a',textAlign:'right'},
   tabs:{flexDirection:'row-reverse',backgroundColor:'#eee9dd',borderRadius:14,padding:4,gap:3},tab:{flex:1,paddingVertical:12,borderRadius:11},activeTab:{backgroundColor:'#fff'},tabText:{fontFamily:'TajawalBold',textAlign:'center',fontSize:13,color:'#5b523a'},

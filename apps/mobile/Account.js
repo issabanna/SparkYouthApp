@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, Modal, Image, Linking, StyleSheet, AppState } from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, Modal, Image, StyleSheet, AppState } from 'react-native';
 import {pickProfilePhoto} from './profile-photo';
 import { leaderRequest, accountRequest } from './registration-client';
 import AccountIdentity from './AccountIdentity';
 import BirthDatePicker from './BirthDatePicker';
 import {ChangePassword} from './AuthScreen';
 import BusApp from './BusApp';
-import LeaderEvaluation, { evaluationLabels } from './LeaderEvaluation';
+import LeaderPortal from './LeaderPortal';
+import {Surface,BackLink,InfoLine,SectionTitle} from './PortalUI';
 import { Picker } from './Picker';
-import MediaImage from './MediaImage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import SafeScreen from './SafeScreen';
 const {
@@ -53,10 +53,7 @@ export default function Account({
     [form, setForm] = useState(empty),
     [consent, setConsent] = useState(false),
     [busy, setBusy] = useState(false),
-    [selectedEvent, setSelectedEvent] = useState(null),
-    [account, setAccount] = useState(profile.account || null),
-    [evaluationSection, setEvaluationSection] = useState(null),
-    [showCampTeam, setShowCampTeam] = useState(false);
+    [account, setAccount] = useState(profile.account || null);
   const refresh = async () => {
     try {
       const [result, saved] = await Promise.all([leaderRequest(), accountRequest()]);
@@ -102,17 +99,6 @@ export default function Account({
     setData(result);
     setScreen(null);
   });
-  const openLink = async url => {
-    if (!/^https:\/\//i.test(url || '')) {
-      setError('لم تضف الإدارة رابطًا صالحًا بعد.');
-      return;
-    }
-    try {
-      await Linking.openURL(url);
-    } catch {
-      setError('تعذّر فتح الرابط.');
-    }
-  };
   const changePhoto=()=>act(async()=>{
       setPhotoMessage('');
       const uri = await pickProfilePhoto();
@@ -158,6 +144,7 @@ export default function Account({
  {!!photoMessage && <Text role="status" accessibilityLiveRegion="polite" style={s.text}>{photoMessage}</Text>}
  <Text style={s.groupLabel}>الإرشاد والمخيمات</Text>
  <Button orange disabled={loading || busy} onPress={() => {
+      setError('');
       if (!data) {
         refresh();
         return;
@@ -190,15 +177,11 @@ export default function Account({
  <Modal visible={!!screen} animationType="slide" onRequestClose={() => {
       if (!busy) {
         setScreen(null);
-        setSelectedEvent(null);
       }
-    }}><SafeScreen style={s.modal}><ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled"><Button disabled={busy} onPress={() => {
+    }}><SafeScreen style={s.modal}><ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled"><BackLink label="العودة إلى حسابي" disabled={busy} onPress={() => {
             setScreen(null);
-            setSelectedEvent(null);
-            setEvaluationSection(null);
-            setShowCampTeam(false);
             setError('');
-          }}>العودة إلى حسابي</Button>
+          }}/>
  {screen === 'identity' && <AccountIdentity initial={account?.details} cityOptions={content.registrationOptions?.cityOptions || []} onSaved={value => {
             setAccount(value);
             updateProfile({
@@ -216,8 +199,8 @@ export default function Account({
  {screen === 'password' && <ChangePassword/>}
  {screen === 'privacy' && <><Text style={s.title}>سياسة الخصوصية</Text><Text style={s.text}>{content.accountSettings?.privacyText || 'لم تنشر الإدارة سياسة الخصوصية بعد.'}</Text></>}
  {screen === 'contact' && <><Text style={s.title}>تواصل معنا</Text><Text selectable style={s.text}>{content.accountSettings?.contactText || 'لم تضف الإدارة تفاصيل التواصل بعد.'}</Text></>}
- {screen === 'pending' && <><Text style={s.title}>طلبك بانتظار موافقة الإدارة</Text><Text style={s.text}>استلمنا طلب الإرشاد. عند اعتماده سيظهر زر بوابة المرشدين في حسابك.</Text><Button disabled={busy} onPress={() => act(refresh)}>تحديث الحالة</Button></>}
- {screen === 'apply' && <><Text style={s.title}>طلب التسجيل كمرشد</Text><Text style={s.heading}>معلومات الحساب</Text>{[...accountFields, ['gender', 'الجنس']].map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text><Text style={s.text}>{key === 'gender' ? account?.details[key] === 'male' ? 'ذكر' : 'أنثى' : account?.details[key] || '—'}</Text></View>)}<Button onPress={() => setScreen('identity')}>تعديل معلومات الحساب</Button><Text style={s.heading}>معلومات إضافية للإرشاد</Text>{leaderFields.map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text>{leaderChoices[key] ? <Picker accessibilityLabel={label} selectedValue={form[key]} onValueChange={v => setForm(f => ({
+ {screen === 'pending' && <Surface><Text style={s.title}>طلبك بانتظار موافقة الإدارة</Text><Text style={s.text}>استلمنا طلب الإرشاد. عند اعتماده سيظهر زر بوابة المرشدين في حسابك.</Text><Button disabled={busy} onPress={() => act(refresh)}>تحديث الحالة</Button></Surface>}
+ {screen === 'apply' && <Surface><Text style={s.title}>طلب التسجيل كمرشد</Text><Text style={s.heading}>معلومات الحساب</Text>{[...accountFields, ['gender', 'الجنس']].map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text><Text style={s.text}>{key === 'gender' ? account?.details[key] === 'male' ? 'ذكر' : 'أنثى' : account?.details[key] || '—'}</Text></View>)}<Button onPress={() => setScreen('identity')}>تعديل معلومات الحساب</Button><Text style={s.heading}>معلومات إضافية للإرشاد</Text>{leaderFields.map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text>{leaderChoices[key] ? <Picker accessibilityLabel={label} selectedValue={form[key]} onValueChange={v => setForm(f => ({
                 ...f,
                 [key]: v
               }))}><Picker.Item label="اختر" value="" />{leaderChoices[key].map(v => <Picker.Item key={v} label={v} value={v} />)}</Picker> : <TextInput accessibilityLabel={label} value={form[key]} maxLength={500} onChangeText={v => setForm(f => ({
@@ -225,22 +208,9 @@ export default function Account({
                 [key]: v
               }))} keyboardType={key==='phone'?'phone-pad':'default'} style={s.input} />}</View>)}<BirthDatePicker value={form.dob} onChange={dob=>setForm(f=>({...f,dob}))}/><Pressable accessibilityRole="checkbox" accessibilityState={{
               checked: consent
-            }} onPress={() => setConsent(!consent)} style={s.button}><Text style={s.text}>{consent ? '☑' : '☐'} أوافق على إرسال هذه المعلومات للإدارة لمراجعة طلب الإرشاد.</Text></Pressable><Button orange disabled={busy || !consent} onPress={submit}>{busy ? 'جارٍ إرسال الطلب…' : 'إرسال طلب الإرشاد'}</Button></>}
- {screen === 'portal' && approved && <>{!selectedEvent ? <><Text style={s.title}>بوابة المرشدين</Text><Text style={s.heading}>مخيماتي وأنشطتي</Text><Text style={s.text}>تكليفاتك المحددة من الإدارة</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}>{(data.portal?.activities || []).map(a => <Pressable key={a.id} accessibilityRole="button" onPress={() => {
-                  setSelectedEvent(a);
-                  setEvaluationSection(null);
-                  setShowCampTeam(false);
-                }} style={s.camp}><MediaImage path={a.image || '/media/camp.png'} style={s.campImage} /><Text style={s.heading}>{a.title}</Text><Text style={s.text}>{a.role || 'مرشد'}</Text><Text style={s.text}>{a.date || ''}</Text></Pressable>)}</ScrollView>{!data.portal?.activities?.length && <Text style={s.text}>لم تحدد الإدارة تكليفات لك بعد.</Text>}<Text style={s.heading}>روابط مهمة</Text>{data.portal?.links?.map((link, i) => <Button key={i} onPress={() => openLink(link.url)}>{link.title}</Button>)}<Button onPress={() => setScreen('information')}>معلوماتي</Button><Button onPress={() => setScreen('leaderApplication')}>التسجيل</Button></> : evaluationSection ? <LeaderEvaluation activityId={selectedEvent.id} section={evaluationSection} onBack={() => setEvaluationSection(null)} /> : <><Button onPress={() => setSelectedEvent(null)}>جميع تكليفاتي</Button>{selectedEvent.teamImage && <MediaImage path={selectedEvent.teamImage} style={{
-                height: 170,
-                borderRadius: 16,
-                marginBottom: 24
-              }} />}<MediaImage path={selectedEvent.image || '/media/camp.png'} style={{
-                height: 150,
-                width: 150,
-                alignSelf: 'flex-end',
-                borderRadius: 22
-              }} /><Text style={s.title}>{selectedEvent.title}</Text><Text style={s.heading}>الدور في المخيم</Text><Text style={s.text}>{selectedEvent.role} · {selectedEvent.date} · {selectedEvent.location}</Text><Button onPress={() => setShowCampTeam(!showCampTeam)}>فريق المخيم</Button>{showCampTeam && selectedEvent.team?.map(person => <View key={person.id}><Text style={s.heading}>{person.name}</Text><Text style={s.text}>{person.role}</Text></View>)}{selectedEvent.evaluationSections?.map(section => <Button key={section} onPress={() => setEvaluationSection(section)}>{evaluationLabels[section]}</Button>)}<Text style={s.heading}>عن المخيم</Text><Text style={s.text}>{selectedEvent.about}</Text><Text style={s.heading}>روابط مهمة</Text>{selectedEvent.links.map((link, i) => <Button key={i} onPress={() => openLink(link.url)}>{link.title}</Button>)}</>}</>}
- {['information', 'leaderApplication'].includes(screen) && <><Text style={s.title}>{screen === 'information' ? 'معلوماتي' : 'طلب الإرشاد المعتمد'}</Text>{[...accountFields, ...leaderFields, ['dob', 'تاريخ الميلاد'], ['gender', 'الجنس']].map(([key, label]) => <View key={key}><Text style={s.label}>{label}</Text><Text style={s.text}>{key === 'gender' ? application?.details[key] === 'male' ? 'ذكر' : 'أنثى' : application?.details[key] || '—'}</Text></View>)}<Button onPress={() => setScreen('portal')}>العودة إلى بوابة المرشدين</Button></>}
+            }} onPress={() => setConsent(!consent)} style={s.button}><Text style={s.text}>{consent ? '☑' : '☐'} أوافق على إرسال هذه المعلومات للإدارة لمراجعة طلب الإرشاد.</Text></Pressable><Button orange disabled={busy || !consent} onPress={submit}>{busy ? 'جارٍ إرسال الطلب…' : 'إرسال طلب الإرشاد'}</Button></Surface>}
+ {screen === 'portal' && approved && <LeaderPortal portal={data.portal} user={user} onInformation={()=>setScreen('information')} onApplication={()=>setScreen('leaderApplication')}/>}
+ {['information', 'leaderApplication'].includes(screen) && <View style={{gap:18}}><SectionTitle title={screen === 'information' ? 'معلوماتي' : 'طلب الإرشاد المعتمد'} subtitle="البيانات المحفوظة في ملفك كمرشد"/><Surface><SectionTitle title="البيانات الشخصية"/>{[...accountFields,['gender','الجنس'],['dob','تاريخ الميلاد']].map(([key,label])=><InfoLine key={key} label={label} value={key==='gender' ? application?.details[key]==='male' ? 'ذكر' : 'أنثى' : application?.details[key]}/>)}</Surface><Surface><SectionTitle title="معلومات الإرشاد"/>{leaderFields.map(([key,label])=><InfoLine key={key} label={label} value={application?.details[key]}/>)}</Surface><BackLink label="العودة إلى بوابة المرشدين" onPress={()=>setScreen('portal')}/></View>}
  {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
  </ScrollView></SafeScreen></Modal></View>;
 }

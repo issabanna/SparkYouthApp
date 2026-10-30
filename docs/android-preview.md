@@ -54,3 +54,6 @@ Version 0.1.10 (code 11) adds the personal Arabic/English Bible reader, account-
 
 
 0.1.11 / code 12: Bible is now a main bottom-navigation tab. Ranking and achievements are merged into an expandable section inside Account. Existing Bible/account actions are preserved; preview signing identity is unchanged. Physical-device verification remains pending.
+
+
+0.1.12 / code 13: redesign leader overview, assigned activities, camp team, profile details, subject lists, person cards and evaluation forms using shared portal components. Existing server-enforced roles and evaluation scopes are retained. Bible controls move into a left-icon settings sheet; verse taps offer private account-backed highlight/remove or comment. Includes the tested single-request startup bootstrap/recovery changes since 0.1.11. No new SQL or native dependencies. Physical-device verification pending; the reported Vercel browser-authentication gate/connection reset is not claimed fixed by this UI release.
