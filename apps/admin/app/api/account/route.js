@@ -5,6 +5,7 @@ import service from '../../../lib/content-service.cjs';
 import checker from '../../../lib/registration-image-check.cjs';
 import { ownerHash, reply, unavailable } from '../../../lib/registration-service';
 import { listRegistrations, getRegistration, mutateRegistration } from '../../../lib/registration-store';
+import {readAccount} from '../../../lib/account-store';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export async function GET(request) {
@@ -13,9 +14,7 @@ export async function GET(request) {
     error: 'جلسة الحساب مطلوبة.'
   }, 401);
   try {
-    const summary = (await listRegistrations(owner)).find(r => r.activityId === leaders.accountActivityId);
-    const account = summary ? (await getRegistration(summary.id)).record : null;
-    if (account) delete account.auditLog;
+    const account = await readAccount(owner);
     return reply({
       account
     });

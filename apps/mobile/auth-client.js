@@ -5,7 +5,7 @@ import api from './api-request.cjs';
 const key = 'spark-auth-session-v1',
   legacyKey = 'spark-registration-session-v1';
 const origin = Platform.OS === 'web' ? '' : 'https://sparkyouth.vercel.app';
-let session, loading, refreshing;
+let session, loading, refreshing, sessionRevision = 0;
 const listeners = new Set();
 export const apiRequest = api.createApiRequest(
   Platform.OS === 'web' ? (...args) => fetch(...args) : expoFetch, origin
@@ -36,6 +36,7 @@ async function load() {
   return loading;
 }
 async function store(value) {
+  if (!value) sessionRevision++;
   session = value;
   loading = null;
   if (Platform.OS === 'web') {
@@ -64,12 +65,14 @@ async function refresh() {
   if (!refreshing) refreshing = (async () => {
     const saved = await load();
     if (!saved) throw Error('سجّل الدخول بحسابك.');
+    const revision = sessionRevision;
     try {
       const result = await post({
         action: 'refresh',
         refreshToken: saved.refresh_token
       });
       if (!result.session) throw Error('انتهت الجلسة.');
+      if (revision !== sessionRevision) throw Error('أُغلقت جلسة الحساب على هذا الجهاز.');
       return await store(result.session);
     } catch (e) {
       if (e.status === 401) await store(null);
@@ -113,7 +116,7 @@ export async function authenticatedRequest(path, options = {}) {
     }
   }
 }
-export async function restoreAuth() {
+export async function restoreAuth({bootstrap = false} = {}) {
   if (Platform.OS === 'web' && window.location.hash) {
     const params = new URLSearchParams(window.location.hash.slice(1));
     if (params.get('access_token') && params.get('refresh_token')) {
@@ -138,12 +141,12 @@ export async function restoreAuth() {
   const saved = await load();
   if (!saved) return null;
   try {
-    const result = await authenticatedRequest('/api/auth');
+    const result = await authenticatedRequest(bootstrap ? '/api/auth?bootstrap=1' : '/api/auth');
     if (!result.authenticated) {
       await store(null);
       return null;
     }
-    return result.user;
+    return bootstrap ? {user: result.user, account: result.account} : result.user;
   } catch (e) {
     if (e.status === 401) {
       await store(null);
@@ -173,6 +176,9 @@ export async function signUp(email, password) {
     user: result.session?.user || null,
     confirmationRequired: result.confirmationRequired
   };
+}
+export async function forgetStoredSession() {
+  await store(null);
 }
 export async function signOut() {
   const saved = await load();

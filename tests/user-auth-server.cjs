@@ -72,6 +72,29 @@ const db=http.createServer(async(req,res)=>{try{
   const fresh=await page.evaluate(()=>JSON.parse(localStorage.getItem('spark-auth-session-v1')));const expired={...fresh,expires_at:Math.floor(Date.now()/1000)-1};const refreshContext=await browser.newContext({viewport:{width:390,height:844}});await refreshContext.addInitScript(session=>localStorage.setItem('spark-auth-session-v1',JSON.stringify(session)),expired);const refreshedPage=await refreshContext.newPage();await refreshedPage.goto(base+'/app');await refreshedPage.getByRole('tab',{name:'حسابي',exact:true}).waitFor();assert.notEqual(await refreshedPage.evaluate(()=>JSON.parse(localStorage.getItem('spark-auth-session-v1')).refresh_token),fresh.refresh_token);
   // Confirmation callback consumes tokens, verifies them on the server and removes the fragment.
   const callback=(await json(await send({action:'login',email:'confirm@example.com',password:'Confirm-password-123'}))).session;const callbackContext=await browser.newContext();const callbackPage=await callbackContext.newPage();await callbackPage.goto(base+'/app#'+new URLSearchParams({access_token:callback.access_token,refresh_token:callback.refresh_token,expires_in:'3600',type:'signup'}));await callbackPage.getByLabel('الاسم الأول بالإنجليزية',{exact:true}).waitFor();assert.equal(await callbackPage.evaluate(()=>location.hash),'');assert.equal(await callbackPage.evaluate(()=>JSON.parse(localStorage.getItem('spark-auth-session-v1')).user.email),'confirm@example.com');
-  assert.deepEqual(errors,[]);console.log('PASS real signup/login/password/logout, automatic new-account confirmation, duplicate-account protection, signup policy, stable cross-device ownership, refresh rotation, server JWT verification and disabled demo/anonymous entry.');
+  // A reset during saved-session restoration must not expose cached account
+  // privileges. The recovery screen can probe the public API and retry securely.
+  const recoveryContext=await browser.newContext({viewport:{width:390,height:844}});
+  await recoveryContext.addInitScript(session=>localStorage.setItem('spark-auth-session-v1',JSON.stringify(session)),fresh);
+  const recoveryPage=await recoveryContext.newPage();let bootstrapAttempts=0,accountGets=0;
+  recoveryPage.on('request',req=>{if(new URL(req.url()).pathname==='/api/account' && req.method()==='GET')accountGets++;});
+  await recoveryPage.route('**/api/auth?bootstrap=1',route=>{bootstrapAttempts++;return route.abort('connectionreset')});
+  await recoveryPage.goto(base+'/app');await recoveryPage.getByRole('button',{name:'إعادة الاتصال',exact:true}).waitFor();
+  assert.equal(bootstrapAttempts,3);assert.equal(await recoveryPage.getByRole('tab',{name:'حسابي',exact:true}).count(),0);
+  await recoveryPage.getByRole('button',{name:'فحص اتصال التطبيق',exact:true}).click();
+  await recoveryPage.getByText('الوصول العام للخادم ناجح. أعد الاتصال بحسابك.',{exact:true}).waitFor();
+  await recoveryPage.unroute('**/api/auth?bootstrap=1');
+  await recoveryPage.getByRole('button',{name:'إعادة الاتصال',exact:true}).click();
+  await recoveryPage.getByRole('tab',{name:'حسابي',exact:true}).waitFor();assert.equal(accountGets,0,'Bootstrap must include account without a second account GET');
+  // Users can discard a broken saved session locally without a failing logout POST.
+  await recoveryPage.route('**/api/auth?bootstrap=1',route=>route.abort('connectionreset'));
+  await recoveryPage.reload();await recoveryPage.getByRole('button',{name:'العودة إلى تسجيل الدخول',exact:true}).click();
+  await recoveryPage.getByRole('button',{name:'دخول',exact:true}).waitFor();
+  assert.equal(await recoveryPage.evaluate(()=>localStorage.getItem('spark-auth-session-v1')),null);
+  assert.equal(await recoveryPage.getByRole('tab',{name:'حسابي',exact:true}).count(),0);
+  const bootstrap=await json(await api.get(base+'/api/auth?bootstrap=1',{headers:owner}));
+  assert.equal(bootstrap.user.id,savedSession.user.id);assert.equal(bootstrap.account.authUserId,savedSession.user.id);
+  assert.equal(bootstrap.account.auditLog,undefined);
+  assert.deepEqual(errors,[]);console.log('PASS real signup/login/password/logout, automatic new-account confirmation, duplicate-account protection, signup policy, stable cross-device ownership, refresh rotation, server JWT verification disabled demo/anonymous entry, single-request bootstrap and secure startup failure recovery.');
  }catch(e){console.error(log);if(page)console.error((await page.locator('body').innerText()).slice(-4000));throw e}finally{await browser?.close();await api.dispose();server.kill('SIGTERM');db.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

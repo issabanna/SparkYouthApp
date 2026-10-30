@@ -30,7 +30,8 @@ import BibleReader from "./BibleReader";
 import SafeAreaView from "./SafeScreen";
 import AccountIdentity from "./AccountIdentity";
 import AuthScreen from "./AuthScreen";
-import {restoreAuth,subscribeAuth,signOut} from "./auth-client";
+import ConnectionRecovery from "./ConnectionRecovery";
+import {restoreAuth,subscribeAuth,signOut,forgetStoredSession} from "./auth-client";
 import {accountRequest} from "./registration-client";
 import {
   normalizeContent,
@@ -188,13 +189,26 @@ export default function App() {
   },[]);
   const emptyProfile={user:null,account:null,reflections:{},completed:[]};
   const [profile,setProfile]=useState(emptyProfile),[authUser,setAuthUser]=useState(null),[authChecking,setAuthChecking]=useState(true),[authError,setAuthError]=useState("");
-  const loadAuthenticatedUser=async user=>{
+  const authAttempt = useRef(0);
+  const loadAuthenticatedUser=async (user, bootstrapAccount=undefined)=>{
+    const attempt=++authAttempt.current;
     setAuthChecking(true);setAuthError("");setAuthUser(user);setProfile(emptyProfile);
-    try{if(user){const {account}=await accountRequest();setProfile({...emptyProfile,...load(sessionKey+':'+user.id,{}),account});}}
-    catch(error){setAuthError(error.message)}finally{setAuthChecking(false)}
+    try{
+      if(user){
+        const account=bootstrapAccount===undefined ? (await accountRequest()).account : bootstrapAccount;
+        if(attempt===authAttempt.current)setProfile({...emptyProfile,...load(sessionKey+':'+user.id,{}),account});
+      }
+    }catch(error){if(attempt===authAttempt.current)setAuthError(error.message)}
+    finally{if(attempt===authAttempt.current)setAuthChecking(false)}
   };
-  const restoreSession=async()=>{setAuthChecking(true);setAuthError("");try{await loadAuthenticatedUser(await restoreAuth())}catch(error){setAuthError(error.message);setAuthChecking(false)}};
-  useEffect(()=>{if(Platform.OS==='web')localStorage.removeItem(sessionKey);const unsubscribe=subscribeAuth(()=>{setAuthUser(null);setProfile(emptyProfile);setAuthError("");setAuthChecking(false)});restoreSession();return unsubscribe;},[]);
+  const restoreSession=async()=>{
+    const attempt=++authAttempt.current;setAuthChecking(true);setAuthError("");
+    try{
+      const restored=await restoreAuth({bootstrap:true});
+      if(attempt===authAttempt.current)await loadAuthenticatedUser(restored?.user||null,restored ? restored.account : null);
+    }catch(error){if(attempt===authAttempt.current){setAuthError(error.message);setAuthChecking(false)}}
+  };
+  useEffect(()=>{if(Platform.OS==='web')localStorage.removeItem(sessionKey);const unsubscribe=subscribeAuth(()=>{authAttempt.current++;setAuthUser(null);setProfile(emptyProfile);setAuthError("");setAuthChecking(false)});restoreSession();return()=>{authAttempt.current++;unsubscribe()};},[]);
   const [tab, setTab] = useState(ar.home),
     [slide, setSlide] = useState(0),
     [selected, setSelected] = useState(null),
@@ -356,7 +370,7 @@ export default function App() {
       </View>
       {!user ? (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
-          {authChecking?<Text style={s.body}>جارٍ التحقق من الحساب…</Text>:authError?<><Text accessibilityRole="alert" style={s.body}>{authError}</Text><Button onPress={restoreSession}>إعادة المحاولة</Button></>:!authUser?<AuthScreen onAuthenticated={loadAuthenticatedUser}/>:<AccountIdentity cityOptions={content.registrationOptions?.cityOptions||[]} onSaved={account=>updateProfile({...profile,account})}/>}
+          {authChecking?<Text style={s.body}>جارٍ التحقق من الحساب…</Text>:authError?<ConnectionRecovery error={authError} onRetry={restoreSession} onLogin={async()=>{authAttempt.current++;try{await forgetStoredSession()}catch(error){setAuthError(error.message)}}}/>:!authUser?<AuthScreen onAuthenticated={loadAuthenticatedUser}/>:<AccountIdentity cityOptions={content.registrationOptions?.cityOptions||[]} onSaved={account=>updateProfile({...profile,account})}/>}
 
         </ScrollView>
       ) : (

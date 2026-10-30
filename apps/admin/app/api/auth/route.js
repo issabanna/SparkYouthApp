@@ -2,6 +2,7 @@ import auth from '../../../lib/user-auth.cjs';
 import signup from '../../../lib/signup-policy.cjs';
 import service from '../../../lib/content-service.cjs';
 import { reply } from '../../../lib/registration-service';
+import {readAccount} from '../../../lib/account-store';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 function authError(error) {
@@ -20,7 +21,13 @@ export async function GET(request) {
     authenticated: false
   }, 503);
   const user = await auth.userForRequest(request);
+  let bootstrap = {};
+  if (user && new URL(request.url).searchParams.get('bootstrap') === '1') {
+    try { bootstrap = {account: await readAccount(auth.ownerForUser(user))}; }
+    catch { return reply({error: 'تعذّر تحميل حسابك الآن. حاول مجددًا.'}, 503); }
+  }
   return reply({
+    ...bootstrap,
     configured: true,
     autoConfirmEmail: true,
     authenticated: !!user,
